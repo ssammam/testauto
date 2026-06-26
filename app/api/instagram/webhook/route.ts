@@ -183,18 +183,50 @@ async function handleComment(change: Record<string, any>) {
   const commentId: string = value.id;
   const commenterUsername: string = value.from?.username || "";
   const commentText: string = (value.text || "").toLowerCase();
+  const mediaId: string = value.media?.id;
 
   // 👉 Comment Price Inquiry
-  if (commentText.includes("price") || commentText.includes("cost") || commentText.includes("pp")) {
+  if (commentText.includes("price") || commentText.includes("cost") || commentText.includes("pp") || commentText.includes("how much")) {
     if (commentId) {
+      // 1. Reply to the comment mentioning the user
       const replyMsg = commenterUsername
-        ? `@${commenterUsername} 👋 We have sent you a DM with the exact price details!`
-        : `👋 DM us for the exact price!`;
+        ? `@${commenterUsername} 👋 The price details and estimation have been sent to your DM, please check!`
+        : `👋 The price details and estimation have been sent to your DM, please check!`;
       await replyToComment(commentId, replyMsg);
       
-      // Attempt to send a private DM acknowledging the comment
+      // 2. Calculate price and send via Private DM
       try {
-        await dmText(commentId, "Hey there! 👋 You asked for the price on our recent post. Please reply here and our bot will fetch the exact live price for you!");
+        let dmMessage = "Hey there! 👋 You asked for the price on our recent post.";
+        
+        if (mediaId) {
+          // Fetch product details based on mediaId (reelId)
+          const product = await client.fetch(`*[_type == "productReel" && reelId == $mediaId][0]`, { mediaId });
+          
+          if (product) {
+            // Fetch today's rates
+            const rates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
+            if (rates) {
+              let ratePerGram = 0;
+              if (product.materialType === 'gold18k') ratePerGram = rates.goldRate18k;
+              else if (product.materialType === 'gold22k') ratePerGram = rates.goldRate22k;
+              else if (product.materialType === 'gold24k') ratePerGram = rates.goldRate24k;
+              else if (product.materialType === 'silver') ratePerGram = rates.silverRate;
+
+              const basePrice = (product.weightGrams * ratePerGram) + (product.makingCharges || 0);
+              const gst = basePrice * 0.03; // 3% GST
+              const totalPrice = Math.round(basePrice + gst);
+
+              dmMessage = `✨ ${product.name}\nWeight: ${product.weightGrams}g\nMaterial: ${product.materialType === 'silver' ? 'Silver' : 'Gold'}\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)`;
+            }
+          } else {
+             dmMessage += " Please reply to this message and our team will get back to you with the exact live price for that item!";
+          }
+        } else {
+           dmMessage += " Please reply to this message and our team will get back to you with the exact live price for that item!";
+        }
+
+        // Send private reply using comment_id
+        await sendDM({ comment_id: commentId }, { message: { text: dmMessage } });
       } catch (err) {
         console.log("DM to commenter skipped:", err);
       }
