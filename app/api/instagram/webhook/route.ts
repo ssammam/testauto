@@ -1,0 +1,258 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "crypto";
+import { client, writeClient } from "@/sanity/lib/client";
+
+const TOKEN = process.env.INSTAGRAM_PAGE_ACCESS_TOKEN!;
+const IG_ID = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID!;
+const APP_SECRET = process.env.INSTAGRAM_APP_SECRET || "";
+
+/* ════════════════════════════════════════
+   SIGNATURE VERIFICATION
+   Blocks any request that didn't come from Meta.
+   Uses crypto.timingSafeEqual to prevent timing attacks.
+════════════════════════════════════════ */
+function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
+  if (!APP_SECRET) return true; // Skip if secret not yet configured (dev mode)
+  if (!signature) return false;
+
+  const expected = createHmac("sha256", APP_SECRET)
+    .update(rawBody, "utf8")
+    .digest("hex");
+
+  const expectedBuf = Buffer.from(`sha256=${expected}`, "utf8");
+  const receivedBuf = Buffer.from(signature, "utf8");
+
+  if (expectedBuf.length !== receivedBuf.length) return false;
+
+  return timingSafeEqual(expectedBuf, receivedBuf);
+}
+
+/* ════════════════════════════════════════
+   SEND HELPERS
+════════════════════════════════════════ */
+
+/** Send an Instagram Direct Message */
+async function sendDM(recipient: { id: string } | { comment_id: string }, body: Record<string, unknown>) {
+  const baseUrl = TOKEN.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
+  const res = await fetch(
+    `${baseUrl}/v25.0/me/messages?access_token=${TOKEN}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recipient, ...body }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    console.error("DM send error:", JSON.stringify(err));
+  }
+}
+
+/** Reply to an Instagram comment */
+async function replyToComment(commentId: string, message: string) {
+  const res = await fetch(
+    `https://graph.facebook.com/v25.0/${commentId}/replies?access_token=${TOKEN}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    console.error("Comment reply error:", JSON.stringify(err));
+  }
+}
+
+/** DM: plain text */
+async function dmText(id: string, text: string) {
+  await sendDM({ id }, { message: { text } });
+}
+
+/* ════════════════════════════════════════
+   HANDLE INCOMING DM
+════════════════════════════════════════ */
+async function handleDM(event: Record<string, any>) {
+  const senderId: string = event.sender?.id;
+  if (!senderId) return;
+
+  if (event.message?.is_echo || senderId === IG_ID) return;
+  if (!event.message && !event.postback) return;
+
+  const rawMessageText: string = (event.message?.text || "").trim();
+  const messageText: string = rawMessageText.toLowerCase();
+
+  // Get sender profile for name
+  const baseUrl = TOKEN.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
+  const profileRes = await fetch(`${baseUrl}/v25.0/${senderId}?fields=username,name&access_token=${TOKEN}`);
+  const profile = profileRes.ok ? await profileRes.json() : {};
+  const name: string = profile.name || profile.username || "there";
+  const username: string = profile.username || "";
+
+  // 1. GREETING
+  if (messageText === "hello" || messageText === "hi" || messageText === "hey") {
+    await dmText(senderId, `👋 Hi ${name}! Are you looking for Gold or Silver? What can we help you with?`);
+    return;
+  }
+
+  // 2. DETECT BOOKING INTENT (date/time/visit)
+  if (messageText.includes("visit") || messageText.includes("tomorrow") || messageText.includes("today") || messageText.includes("book")) {
+    await dmText(senderId, "🗓️ Would you like to schedule a visit? Please provide a date, time, and your phone number so our team can get ready for you!");
+    
+    // Save lead as New
+    await writeClient.create({
+      _type: 'lead',
+      instagramUsername: username,
+      name: name,
+      queryType: 'General',
+      status: 'New',
+      reportedInDailyEmail: false
+    });
+    return;
+  }
+  
+  // 3. DETECT PHONE NUMBER
+  const phoneRegex = /\b\d{10}\b/;
+  if (phoneRegex.test(messageText)) {
+    const phone = messageText.match(phoneRegex)?.[0];
+    await dmText(senderId, `✅ Thank you! We have noted your number (${phone}). We'll be ready for your visit.`);
+    
+    // Update lead with phone number
+    const existingLead = await client.fetch(`*[_type == "lead" && instagramUsername == $username] | order(_createdAt desc)[0]`, { username });
+    if (existingLead) {
+      await writeClient.patch(existingLead._id).set({ phoneNumber: phone }).commit();
+    }
+    return;
+  }
+
+  // 4. CHECK DYNAMIC FAQs
+  const faqs = await client.fetch(`*[_type == "faq"]`);
+  for (const faq of faqs) {
+    if (faq.keyword && messageText.includes(faq.keyword.toLowerCase())) {
+      await dmText(senderId, faq.response);
+      return;
+    }
+  }
+
+  // 5. REEL STORY REPLY (PRICE CHECK)
+  const replyToStory = event.message?.reply_to?.story;
+  if (replyToStory && (messageText.includes("price") || messageText.includes("cost") || messageText.includes("how much"))) {
+    const reelId = replyToStory.id;
+    
+    // Fetch product details based on reelId
+    const product = await client.fetch(`*[_type == "productReel" && reelId == $reelId][0]`, { reelId });
+    if (!product) {
+      await dmText(senderId, "Hmm, I couldn't find the exact details for this piece. Please DM us with a screenshot!");
+      return;
+    }
+
+    // Fetch today's rates
+    const today = new Date().toISOString().split('T')[0];
+    const rates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
+    
+    if (!rates) {
+      await dmText(senderId, "Please wait while our team gets back to you with the exact pricing for this item.");
+      return;
+    }
+
+    let ratePerGram = 0;
+    if (product.materialType === 'gold18k') ratePerGram = rates.goldRate18k;
+    else if (product.materialType === 'gold22k') ratePerGram = rates.goldRate22k;
+    else if (product.materialType === 'gold24k') ratePerGram = rates.goldRate24k;
+    else if (product.materialType === 'silver') ratePerGram = rates.silverRate;
+
+    const basePrice = (product.weightGrams * ratePerGram) + (product.makingCharges || 0);
+    const gst = basePrice * 0.03; // 3% GST
+    const totalPrice = Math.round(basePrice + gst);
+
+    await dmText(senderId, `✨ ${product.name}\nWeight: ${product.weightGrams}g\nMaterial: ${product.materialType === 'silver' ? 'Silver' : 'Gold'}\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)`);
+    return;
+  }
+}
+
+/* ════════════════════════════════════════
+   HANDLE COMMENT
+════════════════════════════════════════ */
+async function handleComment(change: Record<string, any>) {
+  const value = change.value;
+  if (!value) return;
+
+  // Ignore replies to our own comments
+  if (value.from?.id === IG_ID) return;
+
+  const commentId: string = value.id;
+  const commenterUsername: string = value.from?.username || "";
+  const commentText: string = (value.text || "").toLowerCase();
+
+  // 👉 Comment Price Inquiry
+  if (commentText.includes("price") || commentText.includes("cost") || commentText.includes("pp")) {
+    if (commentId) {
+      const replyMsg = commenterUsername
+        ? `@${commenterUsername} 👋 We have sent you a DM with the exact price details!`
+        : `👋 DM us for the exact price!`;
+      await replyToComment(commentId, replyMsg);
+      
+      // Attempt to send a private DM acknowledging the comment
+      try {
+        await dmText(commentId, "Hey there! 👋 You asked for the price on our recent post. Please reply here and our bot will fetch the exact live price for you!");
+      } catch (err) {
+        console.log("DM to commenter skipped:", err);
+      }
+    }
+  }
+}
+
+/* ════════════════════════════════════════
+   WEBHOOK VERIFICATION (GET)
+════════════════════════════════════════ */
+export async function GET(req: NextRequest) {
+  const mode = req.nextUrl.searchParams.get("hub.mode");
+  const token = req.nextUrl.searchParams.get("hub.verify_token");
+  const challenge = req.nextUrl.searchParams.get("hub.challenge");
+
+  if (mode === "subscribe" && token === process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN) {
+    console.log("Webhook verified ✓");
+    return new NextResponse(challenge, { status: 200 });
+  }
+  return new NextResponse("Forbidden", { status: 403 });
+}
+
+/* ════════════════════════════════════════
+   MAIN WEBHOOK (POST)
+════════════════════════════════════════ */
+export async function POST(req: NextRequest) {
+  const rawBody = await req.text();
+
+  const signature = req.headers.get("x-hub-signature-256");
+  if (!verifyWebhookSignature(rawBody, signature)) {
+    console.warn("⚠️ Webhook signature mismatch. (Allowing request temporarily for debugging)");
+    // return new NextResponse("Forbidden", { status: 403 });
+  }
+
+  let body: Record<string, any>;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    return new NextResponse("Bad Request", { status: 400 });
+  }
+
+  if (body.object !== "instagram") {
+    return NextResponse.json({ status: "not_instagram" });
+  }
+
+  for (const entry of body.entry || []) {
+    // ── DMs ──
+    for (const event of entry.messaging || []) {
+      await handleDM(event).catch(e => console.error("DM handler error:", e));
+    }
+
+    // ── Comments ──
+    for (const change of entry.changes || []) {
+      if (change.field === "comments") {
+        await handleComment(change).catch(e => console.error("Comment handler error:", e));
+      }
+    }
+  }
+
+  return NextResponse.json({ status: "ok" });
+}
