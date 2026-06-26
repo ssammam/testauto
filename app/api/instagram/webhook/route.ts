@@ -50,17 +50,26 @@ async function sendDM(recipient: { id: string } | { comment_id: string }, body: 
 
 /** Reply to an Instagram comment */
 async function replyToComment(commentId: string, message: string) {
+  const baseUrl = TOKEN.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
+  
+  // The Graph API often prefers x-www-form-urlencoded for comment replies
+  const params = new URLSearchParams();
+  params.append("message", message);
+  params.append("access_token", TOKEN);
+
   const res = await fetch(
-    `https://graph.facebook.com/v25.0/${commentId}/replies?access_token=${TOKEN}`,
+    `${baseUrl}/v25.0/${commentId}/replies`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message }),
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
     }
   );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    console.error("Comment reply error:", JSON.stringify(err));
+    console.error("[replyToComment] Error:", JSON.stringify(err));
+  } else {
+    console.log(`[replyToComment] Successfully replied to comment ${commentId}`);
   }
 }
 
