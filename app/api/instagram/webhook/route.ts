@@ -91,6 +91,12 @@ async function handleDM(event: Record<string, any>) {
   const rawMessageText: string = (event.message?.text || "").trim();
   const messageText: string = rawMessageText.toLowerCase();
 
+  // ANTI-LOOP: If this message contains our own bot signatures, ignore it completely
+  if (messageText.includes("estimated price") || messageText.includes("our team gets back to you") || messageText.includes("what can we help you with")) {
+    console.log("[handleDM] Anti-loop triggered. Ignoring our own outgoing message.");
+    return;
+  }
+
   console.log(`[handleDM] Received message from ${senderId}: "${rawMessageText}"`);
 
   // Get sender profile for name
@@ -185,9 +191,9 @@ async function handleDM(event: Record<string, any>) {
       const gst = basePrice * 0.03;
       const totalPrice = Math.round(basePrice + gst);
 
-      dmMessage = `✨ Jewelry Piece (Estimate)\nWeight: ${defaultWeight}g\nMaterial: 22K Gold\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)\n\n*(Note: This is a standard estimate. For exact details of a specific piece, please send us a screenshot or reply directly to the post/reel!)*`;
+      dmMessage = `✨ Standard Jewelry Piece\nWeight: ${defaultWeight}g\nMaterial: 22K Gold\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)\n\n*(Note: This is a standard estimate. For exact details of a specific piece, please send us a screenshot or reply directly to the post/reel!)*`;
     } else {
-      dmMessage = "Please wait while our team gets back to you with the exact pricing.";
+      dmMessage = "Thank you for asking! 💛 Please wait a moment while our team gets back to you with the exact pricing for this item.";
     }
 
     console.log(`[handleDM] Triggering dmText to ${senderId}. Calculated dmMessage length: ${dmMessage.length}`);
@@ -217,11 +223,18 @@ async function handleComment(change: Record<string, any>) {
 
   // 👉 Comment Price Inquiry
   if (commentText.includes("price") || commentText.includes("cost") || commentText.includes("pp") || commentText.includes("how much")) {
+    
+    // ANTI-LOOP: Prevent bot from replying to its own comment if IG_ID is wrong
+    if (commentText.includes("sent to your dm") || commentText.includes("message requests")) {
+      console.log("[handleComment] Anti-loop triggered. Ignoring our own comment.");
+      return;
+    }
+
     if (commentId) {
       // 1. Reply to the comment mentioning the user
       const replyMsg = commenterUsername
-        ? `@${commenterUsername} 👋 The price details and estimation have been sent to your DM, please check!`
-        : `👋 The price details and estimation have been sent to your DM, please check!`;
+        ? `@${commenterUsername} ✨ We have sent the complete price breakdown to your DM! Please check your message requests. 💛`
+        : `✨ We have sent the complete price breakdown to your DM! Please check your message requests. 💛`;
       await replyToComment(commentId, replyMsg);
       
       // 2. Calculate price and send via Private DM
