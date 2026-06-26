@@ -197,32 +197,39 @@ async function handleComment(change: Record<string, any>) {
       // 2. Calculate price and send via Private DM
       try {
         let dmMessage = "Hey there! 👋 You asked for the price on our recent post.";
-        
+        let product = null;
         if (mediaId) {
           // Fetch product details based on mediaId (reelId)
-          const product = await client.fetch(`*[_type == "productReel" && reelId == $mediaId][0]`, { mediaId });
-          
-          if (product) {
-            // Fetch today's rates
-            const rates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
-            if (rates) {
-              let ratePerGram = 0;
-              if (product.materialType === 'gold18k') ratePerGram = rates.goldRate18k;
-              else if (product.materialType === 'gold22k') ratePerGram = rates.goldRate22k;
-              else if (product.materialType === 'gold24k') ratePerGram = rates.goldRate24k;
-              else if (product.materialType === 'silver') ratePerGram = rates.silverRate;
+          product = await client.fetch(`*[_type == "productReel" && reelId == $mediaId][0]`, { mediaId });
+        }
 
-              const basePrice = (product.weightGrams * ratePerGram) + (product.makingCharges || 0);
-              const gst = basePrice * 0.03; // 3% GST
-              const totalPrice = Math.round(basePrice + gst);
+        const rates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
 
-              dmMessage = `✨ ${product.name}\nWeight: ${product.weightGrams}g\nMaterial: ${product.materialType === 'silver' ? 'Silver' : 'Gold'}\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)`;
-            }
-          } else {
-             dmMessage += " Please reply to this message and our team will get back to you with the exact live price for that item!";
-          }
+        if (product && rates) {
+          let ratePerGram = 0;
+          if (product.materialType === 'gold18k') ratePerGram = rates.goldRate18k;
+          else if (product.materialType === 'gold22k') ratePerGram = rates.goldRate22k;
+          else if (product.materialType === 'gold24k') ratePerGram = rates.goldRate24k;
+          else if (product.materialType === 'silver') ratePerGram = rates.silverRate;
+
+          const basePrice = (product.weightGrams * ratePerGram) + (product.makingCharges || 0);
+          const gst = basePrice * 0.03; // 3% GST
+          const totalPrice = Math.round(basePrice + gst);
+
+          dmMessage = `✨ ${product.name}\nWeight: ${product.weightGrams}g\nMaterial: ${product.materialType === 'silver' ? 'Silver' : 'Gold'}\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)`;
+        } else if (rates) {
+          // Fallback to default calculation if product is not found
+          const defaultWeight = 1500;
+          const defaultMaking = 12000;
+          const ratePerGram = rates.goldRate22k || 0; // Defaulting to 22K Gold
+
+          const basePrice = (defaultWeight * ratePerGram) + defaultMaking;
+          const gst = basePrice * 0.03;
+          const totalPrice = Math.round(basePrice + gst);
+
+          dmMessage = `✨ Jewelry Piece (Estimate)\nWeight: ${defaultWeight}g\nMaterial: 22K Gold\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)\n\n*(Note: This is a standard estimate. For exact details of this specific piece, please reply to this message!)*`;
         } else {
-           dmMessage += " Please reply to this message and our team will get back to you with the exact live price for that item!";
+          dmMessage += " Please reply to this message and our team will get back to you with the exact live price for that item!";
         }
 
         // Send private reply using comment_id
