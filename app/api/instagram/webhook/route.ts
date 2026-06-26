@@ -82,6 +82,8 @@ async function handleDM(event: Record<string, any>) {
   const rawMessageText: string = (event.message?.text || "").trim();
   const messageText: string = rawMessageText.toLowerCase();
 
+  console.log(`[handleDM] Received message from ${senderId}: "${rawMessageText}"`);
+
   // Get sender profile for name
   const baseUrl = TOKEN.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
   const profileRes = await fetch(`${baseUrl}/v25.0/${senderId}?fields=username,name&access_token=${TOKEN}`);
@@ -179,8 +181,11 @@ async function handleDM(event: Record<string, any>) {
       dmMessage = "Please wait while our team gets back to you with the exact pricing.";
     }
 
+    console.log(`[handleDM] Triggering dmText to ${senderId}. Calculated dmMessage length: ${dmMessage.length}`);
     await dmText(senderId, dmMessage);
     return;
+  } else {
+    console.log(`[handleDM] Message didn't match any keyword. messageText: "${messageText}"`);
   }
 }
 
@@ -198,6 +203,8 @@ async function handleComment(change: Record<string, any>) {
   const commenterUsername: string = value.from?.username || "";
   const commentText: string = (value.text || "").toLowerCase();
   const mediaId: string = value.media?.id;
+
+  console.log(`[handleComment] Received comment ${commentId} from ${commenterUsername}: "${commentText}" (mediaId: ${mediaId})`);
 
   // 👉 Comment Price Inquiry
   if (commentText.includes("price") || commentText.includes("cost") || commentText.includes("pp") || commentText.includes("how much")) {
@@ -247,11 +254,14 @@ async function handleComment(change: Record<string, any>) {
         }
 
         // Send private reply using comment_id
+        console.log(`[handleComment] Sending private reply for comment ${commentId}`);
         await sendDM({ comment_id: commentId }, { message: { text: dmMessage } });
       } catch (err) {
-        console.log("DM to commenter skipped:", err);
+        console.error("[handleComment] DM to commenter skipped:", err);
       }
     }
+  } else {
+    console.log(`[handleComment] Comment didn't match price keywords. Text: "${commentText}"`);
   }
 }
 
