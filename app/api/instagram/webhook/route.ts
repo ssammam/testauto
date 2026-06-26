@@ -289,9 +289,12 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Bad Request", { status: 400 });
   }
 
-  if (body.object !== "instagram") {
-    return NextResponse.json({ status: "not_instagram" });
+  if (body.object !== "instagram" && body.object !== "page") {
+    console.log("Ignored object type:", body.object);
+    return NextResponse.json({ status: "ignored_object" });
   }
+
+  console.log("Processing webhook entry:", JSON.stringify(body.entry, null, 2));
 
   for (const entry of body.entry || []) {
     // ── DMs ──
