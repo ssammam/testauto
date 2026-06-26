@@ -134,38 +134,52 @@ async function handleDM(event: Record<string, any>) {
     }
   }
 
-  // 5. REEL STORY REPLY (PRICE CHECK)
+  // 5. PRICE CHECK (From Story Reply OR general DM)
   const replyToStory = event.message?.reply_to?.story;
-  if (replyToStory && (messageText.includes("price") || messageText.includes("cost") || messageText.includes("how much"))) {
-    const reelId = replyToStory.id;
+  if (messageText.includes("price") || messageText.includes("cost") || messageText.includes("how much") || messageText.includes("pp")) {
+    const reelId = replyToStory?.id;
     
-    // Fetch product details based on reelId
-    const product = await client.fetch(`*[_type == "productReel" && reelId == $reelId][0]`, { reelId });
-    if (!product) {
-      await dmText(senderId, "Hmm, I couldn't find the exact details for this piece. Please DM us with a screenshot!");
-      return;
+    let dmMessage = replyToStory 
+      ? "Hey there! 👋 You asked for the price of the item in our story."
+      : "Hey there! 👋 You asked for a price estimate.";
+
+    let product = null;
+    if (reelId) {
+      // Fetch product details based on reelId
+      product = await client.fetch(`*[_type == "productReel" && reelId == $reelId][0]`, { reelId });
     }
 
     // Fetch today's rates
-    const today = new Date().toISOString().split('T')[0];
     const rates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
     
-    if (!rates) {
-      await dmText(senderId, "Please wait while our team gets back to you with the exact pricing for this item.");
-      return;
+    if (product && rates) {
+      let ratePerGram = 0;
+      if (product.materialType === 'gold18k') ratePerGram = rates.goldRate18k;
+      else if (product.materialType === 'gold22k') ratePerGram = rates.goldRate22k;
+      else if (product.materialType === 'gold24k') ratePerGram = rates.goldRate24k;
+      else if (product.materialType === 'silver') ratePerGram = rates.silverRate;
+
+      const basePrice = (product.weightGrams * ratePerGram) + (product.makingCharges || 0);
+      const gst = basePrice * 0.03; // 3% GST
+      const totalPrice = Math.round(basePrice + gst);
+
+      dmMessage = `✨ ${product.name}\nWeight: ${product.weightGrams}g\nMaterial: ${product.materialType === 'silver' ? 'Silver' : 'Gold'}\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)`;
+    } else if (rates) {
+      // Fallback to default calculation
+      const defaultWeight = 1500;
+      const defaultMaking = 12000;
+      const ratePerGram = rates.goldRate22k || 0; // Defaulting to 22K Gold
+
+      const basePrice = (defaultWeight * ratePerGram) + defaultMaking;
+      const gst = basePrice * 0.03;
+      const totalPrice = Math.round(basePrice + gst);
+
+      dmMessage = `✨ Jewelry Piece (Estimate)\nWeight: ${defaultWeight}g\nMaterial: 22K Gold\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)\n\n*(Note: This is a standard estimate. For exact details of a specific piece, please send us a screenshot or reply directly to the post/reel!)*`;
+    } else {
+      dmMessage = "Please wait while our team gets back to you with the exact pricing.";
     }
 
-    let ratePerGram = 0;
-    if (product.materialType === 'gold18k') ratePerGram = rates.goldRate18k;
-    else if (product.materialType === 'gold22k') ratePerGram = rates.goldRate22k;
-    else if (product.materialType === 'gold24k') ratePerGram = rates.goldRate24k;
-    else if (product.materialType === 'silver') ratePerGram = rates.silverRate;
-
-    const basePrice = (product.weightGrams * ratePerGram) + (product.makingCharges || 0);
-    const gst = basePrice * 0.03; // 3% GST
-    const totalPrice = Math.round(basePrice + gst);
-
-    await dmText(senderId, `✨ ${product.name}\nWeight: ${product.weightGrams}g\nMaterial: ${product.materialType === 'silver' ? 'Silver' : 'Gold'}\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)`);
+    await dmText(senderId, dmMessage);
     return;
   }
 }
