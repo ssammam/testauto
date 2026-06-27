@@ -64,20 +64,27 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [cardGenerated, setCardGenerated] = useState(false);
   
-  // Draggable / Adjustable text coordinates
-  const [textX, setTextX] = useState(140);
-  const [textY, setTextY] = useState(850);
+  type TextNode = { id: string, text: string, x: number, y: number, fontSize: number, color: string, align: 'left' | 'center' | 'right' };
+  
+  const [textNodes, setTextNodes] = useState<TextNode[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
 
-  const loadTemplate = (url: string, defX = 140, defY = 850) => {
-    setTextX(defX);
-    setTextY(defY);
+  // Initialize Default Layers
+  useEffect(() => {
+    if (initialRates) {
+      setTextNodes([
+        { id: '1', text: `₹${parseFloat(initialRates?.goldRate24k || '0').toLocaleString('en-IN')}`, x: 540, y: 800, fontSize: 80, color: '#e1b366', align: 'center' },
+        { id: '2', text: `₹${parseFloat(initialRates?.goldRate22k || '0').toLocaleString('en-IN')}`, x: 540, y: 1000, fontSize: 80, color: '#e1b366', align: 'center' },
+        { id: '3', text: `₹${parseFloat(initialRates?.goldRate18k || '0').toLocaleString('en-IN')}`, x: 540, y: 1200, fontSize: 80, color: '#e1b366', align: 'center' },
+        { id: '4', text: `₹${parseFloat(initialRates?.silverRate || '0').toLocaleString('en-IN')}`, x: 540, y: 1400, fontSize: 80, color: '#e1b366', align: 'center' }
+      ]);
+    }
+  }, [initialRates]);
+
+  const loadTemplate = (url: string) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => {
-      setBgImage(img);
-      drawCard(img, defX, defY);
-    };
+    img.onload = () => setBgImage(img);
     img.src = url;
   };
 
@@ -90,9 +97,7 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
       return;
     }
     const tmpl = templates.find(t => t._id === tmplId);
-    if (tmpl && tmpl.imageUrl) {
-      loadTemplate(tmpl.imageUrl, tmpl.textX || 140, tmpl.textY || 850);
-    }
+    if (tmpl && tmpl.imageUrl) loadTemplate(tmpl.imageUrl);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,18 +106,15 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
-        img.onload = () => {
-          setBgImage(img);
-          drawCard(img);
-        };
+        img.onload = () => setBgImage(img);
         img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const drawCard = (img: HTMLImageElement | null = bgImage, currentX = textX, currentY = textY) => {
-    if (!img || !canvasRef.current) return;
+  const drawCard = () => {
+    if (!bgImage || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -122,55 +124,14 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
     canvas.height = 1920;
 
     // Draw background
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
-    // Add a dark gradient overlay for text readability
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, 'rgba(0,0,0,0.1)');
-    gradient.addColorStop(0.5, 'rgba(0,0,0,0.6)');
-    gradient.addColorStop(1, 'rgba(0,0,0,0.8)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw Date
-    ctx.fillStyle = '#e1b366';
-    ctx.font = 'bold 50px Arial';
-    ctx.textAlign = 'center';
-    const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-    ctx.fillText(`TODAY'S GOLD RATES`, canvas.width / 2, 700);
-    
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '40px Arial';
-    ctx.fillText(today, canvas.width / 2, 770);
-
-    // Draw Rates Box
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.strokeStyle = '#e1b366';
-    ctx.lineWidth = 4;
-    ctx.roundRect(currentX, currentY, 800, 600, 30);
-    ctx.fill();
-    ctx.stroke();
-
-    // Rates Text
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 55px Arial';
-    
-    const ratesData = [
-      { label: '24K GOLD', value: `₹${parseFloat(initialRates?.goldRate24k || '0').toLocaleString('en-IN')} /g` },
-      { label: '22K GOLD', value: `₹${parseFloat(initialRates?.goldRate22k || '0').toLocaleString('en-IN')} /g` },
-      { label: '18K GOLD', value: `₹${parseFloat(initialRates?.goldRate18k || '0').toLocaleString('en-IN')} /g` },
-      { label: 'SILVER', value: `₹${parseFloat(initialRates?.silverRate || '0').toLocaleString('en-IN')} /kg` },
-    ];
-
-    let yPos = currentY + 120;
-    ratesData.forEach((item) => {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(item.label, currentX + 60, yPos);
-      ctx.fillStyle = '#e1b366';
-      ctx.textAlign = 'right';
-      ctx.fillText(item.value, currentX + 740, yPos);
-      ctx.textAlign = 'left';
-      yPos += 130;
+    // Draw Text Layers
+    textNodes.forEach(node => {
+      ctx.fillStyle = node.color;
+      ctx.font = `bold ${node.fontSize}px Arial`;
+      ctx.textAlign = node.align as CanvasTextAlign;
+      ctx.fillText(node.text, node.x, node.y);
     });
 
     setCardGenerated(true);
@@ -178,8 +139,8 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
 
   // Redraw if rates or positions change
   useEffect(() => {
-    if (bgImage) drawCard(bgImage, textX, textY);
-  }, [initialRates, bgImage, textX, textY]);
+    if (bgImage) drawCard();
+  }, [bgImage, textNodes]);
 
   const downloadCard = () => {
     if (!canvasRef.current) return;
@@ -440,38 +401,75 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
             )}
           </div>
           
-          <div className="flex flex-col gap-4 max-w-xs w-full">
+          <div className="flex flex-col gap-4 max-w-sm w-full">
             {cardGenerated && (
-              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                <h4 className="font-semibold text-gray-900">Adjust Position</h4>
-                
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Horizontal (Left/Right)</span>
-                    <span>{textX}</span>
-                  </div>
-                  <input type="range" min="0" max="1080" value={textX} onChange={(e) => setTextX(Number(e.target.value))} className="w-full accent-[#7c6a46]" />
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4 max-h-[600px] overflow-y-auto">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-semibold text-gray-900">Text Layers</h4>
+                  <button 
+                    onClick={() => setTextNodes([...textNodes, { id: Date.now().toString(), text: 'New Text', x: 540, y: 500, fontSize: 60, color: '#ffffff', align: 'center' }])}
+                    className="text-xs font-medium bg-gray-100 px-2 py-1 rounded hover:bg-gray-200"
+                  >
+                    + Add Text
+                  </button>
                 </div>
                 
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Vertical (Up/Down)</span>
-                    <span>{textY}</span>
+                {textNodes.map(node => (
+                  <div key={node.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={node.text} 
+                        onChange={(e) => setTextNodes(textNodes.map(n => n.id === node.id ? { ...n, text: e.target.value } : n))}
+                        className="flex-1 text-sm border-gray-300 rounded focus:ring-[#7c6a46] focus:border-[#7c6a46] px-2 py-1"
+                      />
+                      <input 
+                        type="color" 
+                        value={node.color}
+                        onChange={(e) => setTextNodes(textNodes.map(n => n.id === node.id ? { ...n, color: e.target.value } : n))}
+                        className="w-8 h-8 rounded cursor-pointer"
+                      />
+                      <button 
+                        onClick={() => setTextNodes(textNodes.filter(n => n.id !== node.id))}
+                        className="text-red-500 hover:text-red-700 text-xs px-2"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-[10px] text-gray-500">Font Size ({node.fontSize}px)</span>
+                        <input type="range" min="10" max="300" value={node.fontSize} onChange={(e) => setTextNodes(textNodes.map(n => n.id === node.id ? { ...n, fontSize: Number(e.target.value) } : n))} className="w-full accent-[#7c6a46]" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-500">Alignment</span>
+                        <select 
+                          value={node.align}
+                          onChange={(e) => setTextNodes(textNodes.map(n => n.id === node.id ? { ...n, align: e.target.value as any } : n))}
+                          className="w-full text-xs border-gray-300 rounded py-1"
+                        >
+                          <option value="left">Left</option>
+                          <option value="center">Center</option>
+                          <option value="right">Right</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-[10px] text-gray-500">X Position</span>
+                        <input type="range" min="0" max="1080" value={node.x} onChange={(e) => setTextNodes(textNodes.map(n => n.id === node.id ? { ...n, x: Number(e.target.value) } : n))} className="w-full accent-[#7c6a46]" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-500">Y Position</span>
+                        <input type="range" min="0" max="1920" value={node.y} onChange={(e) => setTextNodes(textNodes.map(n => n.id === node.id ? { ...n, y: Number(e.target.value) } : n))} className="w-full accent-[#7c6a46]" />
+                      </div>
+                    </div>
                   </div>
-                  <input type="range" min="0" max="1920" value={textY} onChange={(e) => setTextY(Number(e.target.value))} className="w-full accent-[#7c6a46]" />
-                </div>
+                ))}
               </div>
             )}
-
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-              <h4 className="font-semibold text-gray-900 mb-2">How it works:</h4>
-              <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
-                <li>Upload your branded blank background image.</li>
-                <li>The system reads your current live rates.</li>
-                <li>We automatically write the rates on the image.</li>
-                <li>Click download and post to your story!</li>
-              </ol>
-            </div>
             
             <button 
               onClick={downloadCard}
