@@ -98,7 +98,7 @@ function buildProductDmMessage(product: any, rates: any, isEstimate: boolean = f
       if (product.materialType === 'gold18k') ratePerGram = rates?.goldRate18k || 0;
       else if (product.materialType === 'gold22k') ratePerGram = rates?.goldRate22k || 0;
       else if (product.materialType === 'gold24k') ratePerGram = rates?.goldRate24k || 0;
-      else if (product.materialType === 'silver') ratePerGram = rates?.silverRate || 0;
+      else if (product.materialType === 'silver') ratePerGram = (rates?.silverRate || 0) / 1000;
 
       if (!ratePerGram) ratePerGram = rates?.goldRate22k || 0; // Default to 22k if missing
 

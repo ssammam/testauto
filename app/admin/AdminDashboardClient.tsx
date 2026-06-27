@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { saveDailyRates } from './actions';
-import { Calculator, Save, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Calculator, Save, TrendingUp, CheckCircle2, Image as ImageIcon, Download, Upload } from 'lucide-react';
 
 export default function AdminDashboardClient({ initialRates }: { initialRates: any }) {
   const [isSaving, setIsSaving] = useState(false);
@@ -35,7 +35,7 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
       case '18k': return initialRates?.goldRate18k || 0;
       case '22k': return initialRates?.goldRate22k || 0;
       case '24k': return initialRates?.goldRate24k || 0;
-      case 'silver': return initialRates?.silverRate || 0;
+      case 'silver': return (initialRates?.silverRate || 0) / 1000; // Convert kg to g for calculator
       default: return 0;
     }
   };
@@ -58,6 +58,106 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
   };
 
   const result = calculateFinalPrice();
+
+  // Rate Card Generator State
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
+  const [cardGenerated, setCardGenerated] = useState(false);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          setBgImage(img);
+          drawCard(img);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const drawCard = (img: HTMLImageElement | null = bgImage) => {
+    if (!img || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Instagram Story Size
+    canvas.width = 1080;
+    canvas.height = 1920;
+
+    // Draw background
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    // Add a dark gradient overlay for text readability
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, 'rgba(0,0,0,0.1)');
+    gradient.addColorStop(0.5, 'rgba(0,0,0,0.6)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0.8)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Date
+    ctx.fillStyle = '#e1b366';
+    ctx.font = 'bold 50px Arial';
+    ctx.textAlign = 'center';
+    const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    ctx.fillText(`TODAY'S GOLD RATES`, canvas.width / 2, 700);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '40px Arial';
+    ctx.fillText(today, canvas.width / 2, 770);
+
+    // Draw Rates Box
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.strokeStyle = '#e1b366';
+    ctx.lineWidth = 4;
+    ctx.roundRect(140, 850, 800, 600, 30);
+    ctx.fill();
+    ctx.stroke();
+
+    // Rates Text
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 55px Arial';
+    
+    const ratesData = [
+      { label: '24K GOLD', value: `₹${parseFloat(initialRates?.goldRate24k || '0').toLocaleString('en-IN')} /g` },
+      { label: '22K GOLD', value: `₹${parseFloat(initialRates?.goldRate22k || '0').toLocaleString('en-IN')} /g` },
+      { label: '18K GOLD', value: `₹${parseFloat(initialRates?.goldRate18k || '0').toLocaleString('en-IN')} /g` },
+      { label: 'SILVER', value: `₹${parseFloat(initialRates?.silverRate || '0').toLocaleString('en-IN')} /kg` },
+    ];
+
+    let yPos = 970;
+    ratesData.forEach((item) => {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(item.label, 200, yPos);
+      ctx.fillStyle = '#e1b366';
+      ctx.textAlign = 'right';
+      ctx.fillText(item.value, 880, yPos);
+      ctx.textAlign = 'left';
+      yPos += 130;
+    });
+
+    setCardGenerated(true);
+  };
+
+  // Redraw if rates change
+  useEffect(() => {
+    if (bgImage) drawCard();
+  }, [initialRates, bgImage]);
+
+  const downloadCard = () => {
+    if (!canvasRef.current) return;
+    const url = canvasRef.current.toDataURL('image/jpeg', 0.9);
+    const link = document.createElement('a');
+    link.download = `Gold-Rates-${new Date().toISOString().split('T')[0]}.jpg`;
+    link.href = url;
+    link.click();
+  };
 
   // Ensure rates exist for the ticker
   const hasRates = initialRates && Object.keys(initialRates).length > 0;
@@ -83,7 +183,7 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
               <span className="mx-4 text-white/50">•</span>
               <span>18K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate18k?.toLocaleString('en-IN') || 0}/g</span></span>
               <span className="mx-4 text-white/50">•</span>
-              <span>Silver: <span className="text-white font-bold tracking-wide">₹{initialRates.silverRate?.toLocaleString('en-IN') || 0}/g</span></span>
+              <span>Silver: <span className="text-white font-bold tracking-wide">₹{initialRates.silverRate?.toLocaleString('en-IN') || 0}/kg</span></span>
               <span className="mx-4 text-white/50">•</span>
               
               {/* Duplicate for seamless infinite scroll */}
@@ -93,7 +193,7 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
               <span className="mx-4 text-white/50">•</span>
               <span>18K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate18k?.toLocaleString('en-IN') || 0}/g</span></span>
               <span className="mx-4 text-white/50">•</span>
-              <span>Silver: <span className="text-white font-bold tracking-wide">₹{initialRates.silverRate?.toLocaleString('en-IN') || 0}/g</span></span>
+              <span>Silver: <span className="text-white font-bold tracking-wide">₹{initialRates.silverRate?.toLocaleString('en-IN') || 0}/kg</span></span>
             </div>
           </div>
         </div>
@@ -155,7 +255,7 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Silver Rate (₹/g)</label>
+                <label className="text-sm font-medium text-gray-700">Silver Rate (₹/kg)</label>
                 <input 
                   name="silverRate"
                   type="number"
@@ -163,7 +263,7 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
                   required
                   defaultValue={initialRates?.silverRate}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#7c6a46]/20 focus:border-[#7c6a46] transition-all"
-                  placeholder="e.g. 85"
+                  placeholder="e.g. 85000"
                 />
               </div>
             </div>
@@ -261,6 +361,61 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* RATE CARD GENERATOR */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col lg:col-span-2">
+        <div className="border-b border-gray-100 p-6 bg-gray-50/50 flex justify-between items-center">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="bg-[#f0ece1] p-2 rounded-lg">
+                <ImageIcon className="w-5 h-5 text-[#7c6a46]" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900">Instagram Story Generator</h2>
+            </div>
+            <p className="text-sm text-gray-500 mt-2">Upload a background template and we'll automatically stamp today's live rates onto it for you to download!</p>
+          </div>
+          <div>
+            <label className="cursor-pointer bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm">
+              <Upload className="w-4 h-4" />
+              Upload Template
+              <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+            </label>
+          </div>
+        </div>
+
+        <div className="p-6 flex flex-col md:flex-row gap-8 items-center justify-center bg-gray-50/30">
+          <div className="w-full max-w-sm aspect-[9/16] bg-gray-100 border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center overflow-hidden relative shadow-inner">
+            <canvas ref={canvasRef} className="w-full h-full object-contain absolute inset-0 z-10"></canvas>
+            {!cardGenerated && (
+              <div className="text-center p-6 text-gray-400 z-0">
+                <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p className="font-medium text-sm">Upload a background image (1080x1920) to generate your custom rate card.</p>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex flex-col gap-4 max-w-xs w-full">
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+              <h4 className="font-semibold text-gray-900 mb-2">How it works:</h4>
+              <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
+                <li>Upload your branded blank background image.</li>
+                <li>The system reads your current live rates.</li>
+                <li>We automatically write the rates on the image.</li>
+                <li>Click download and post to your story!</li>
+              </ol>
+            </div>
+            
+            <button 
+              onClick={downloadCard}
+              disabled={!cardGenerated}
+              className="w-full bg-gradient-to-r from-[#7c6a46] to-[#e1b366] text-white py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:grayscale shadow-md"
+            >
+              <Download className="w-5 h-5" />
+              Download Story Card
+            </button>
           </div>
         </div>
       </div>
