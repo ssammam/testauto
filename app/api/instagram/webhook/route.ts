@@ -231,10 +231,7 @@ async function handleDM(event: Record<string, any>) {
   const replyToStory = event.message?.reply_to?.story;
   if (messageText.includes("price")) {
     const reelId = replyToStory?.id;
-    
-    let dmMessage = replyToStory 
-      ? "Hey there! 👋 You asked for the price of the item in our story."
-      : "Hey there! 👋 You asked for a price estimate.";
+    const hasAttachment = event.message?.attachments && event.message.attachments.length > 0;
 
     let product = null;
     if (reelId) {
@@ -245,10 +242,13 @@ async function handleDM(event: Record<string, any>) {
     // Fetch today's rates
     const rates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
     
-    if (product || rates) {
+    let dmMessage = "";
+    if (product) {
       dmMessage = buildProductDmMessage(product, rates);
+    } else if (reelId || hasAttachment) {
+      dmMessage = "Hmm, it looks like the post or reel you shared isn't currently recognized in our active catalog, or it might be a random post from another page! 😅\n\nPlease make sure you are sharing one of our official products so we can give you the exact price. If this is our product, our team will get back to you shortly! 💛";
     } else {
-      dmMessage = "Thank you for asking! 💛 Please wait a moment while our team gets back to you with the exact pricing for this item.";
+      dmMessage = buildProductDmMessage(null, rates);
     }
 
     console.log(`[handleDM] Triggering dmText to ${senderId}. Calculated dmMessage length: ${dmMessage.length}`);
@@ -303,10 +303,10 @@ async function handleComment(change: Record<string, any>) {
 
         const rates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
 
-        if (product || rates) {
+        if (product) {
           dmMessage = buildProductDmMessage(product, rates);
         } else {
-          dmMessage += " Please reply to this message and our team will get back to you with the exact live price for that item!";
+          dmMessage = "👋 Hey there! We are currently checking the exact live price for this specific item. Our team will get back to you shortly! 💛";
         }
 
         // Send private reply using comment_id
