@@ -200,9 +200,19 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                       <label className="block text-xs font-medium text-gray-700 mb-1">Locked Price (₹)</label>
                       <input name="lockedPrice" type="number" defaultValue={post.lockedPrice} className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="e.g. 145000" />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Making Charges (₹)</label>
-                      <input name="makingCharges" type="number" defaultValue={post.makingCharges} className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
+                    <div className="col-span-2 grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Making Charge Type</label>
+                        <select name="makingChargeType" defaultValue={post.makingChargeType || 'percentage'} className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
+                          <option value="percentage">Percentage (%)</option>
+                          <option value="flat">Flat Amount (₹)</option>
+                          <option value="per_gram">Per Gram (₹/g)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Making Charges Value</label>
+                        <input name="makingCharges" type="number" step="0.01" defaultValue={post.makingCharges} className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="e.g. 15 for 15%" />
+                      </div>
                     </div>
                   </div>
                   
@@ -236,7 +246,11 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                     <div className="bg-gray-50 p-2 rounded-lg col-span-2 flex justify-between items-center">
                       <div>
                         <span className="block text-xs text-gray-500">Making Charges</span>
-                        <span className="font-medium text-gray-900">₹{post.makingCharges || 0}</span>
+                        <span className="font-medium text-gray-900">
+                          {post.makingChargeType === 'percentage' ? `${post.makingCharges || 0}%` : 
+                           post.makingChargeType === 'per_gram' ? `₹${post.makingCharges || 0}/g` : 
+                           `₹${post.makingCharges || 0}`}
+                        </span>
                       </div>
                       {post.isPriceLocked && (
                         <div className="text-right">

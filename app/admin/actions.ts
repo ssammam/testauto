@@ -81,6 +81,7 @@ export async function syncInstagramPosts() {
           description: post.caption || '',
           materialType: 'gold22k', // default
           weightGrams: 0,
+          makingChargeType: 'percentage', // default
           makingCharges: 0,
           thumbnailUrl: post.thumbnail_url || post.media_url || '',
           publishedAt: post.timestamp || new Date().toISOString(),
@@ -108,6 +109,7 @@ export async function updateProductReel(id: string, formData: FormData) {
     const materialType = formData.get('materialType') as string;
     const weightGrams = parseFloat(formData.get('weightGrams') as string) || 0;
     const makingCharges = parseFloat(formData.get('makingCharges') as string) || 0;
+    const makingChargeType = formData.get('makingChargeType') as string;
     const description = formData.get('description') as string;
     
     // New premium fields
@@ -123,6 +125,7 @@ export async function updateProductReel(id: string, formData: FormData) {
       materialType,
       weightGrams,
       makingCharges,
+      makingChargeType,
       description,
       status,
       category,
