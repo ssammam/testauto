@@ -86,6 +86,11 @@ function buildProductDmMessage(product: any, rates: any, isEstimate: boolean = f
     }
 
     let totalPrice = 0;
+    let rawGoldValue = 0;
+    let makingChargeTotal = 0;
+    let gst = 0;
+    let breakdownText = "";
+
     if (product.isPriceLocked && product.lockedPrice) {
       totalPrice = product.lockedPrice;
     } else {
@@ -95,8 +100,7 @@ function buildProductDmMessage(product: any, rates: any, isEstimate: boolean = f
       else if (product.materialType === 'gold24k') ratePerGram = rates?.goldRate24k || 0;
       else if (product.materialType === 'silver') ratePerGram = rates?.silverRate || 0;
 
-      const rawGoldValue = product.weightGrams * ratePerGram;
-      let makingChargeTotal = 0;
+      rawGoldValue = product.weightGrams * ratePerGram;
       
       if (product.makingChargeType === 'percentage') {
         makingChargeTotal = rawGoldValue * ((product.makingCharges || 0) / 100);
@@ -107,45 +111,31 @@ function buildProductDmMessage(product: any, rates: any, isEstimate: boolean = f
       }
 
       const basePrice = rawGoldValue + makingChargeTotal;
-      const gst = basePrice * 0.03; // 3% GST
+      gst = basePrice * 0.03; // 3% GST
       totalPrice = Math.round(basePrice + gst);
+
+      let makingStr = "";
+      if (product.makingChargeType === 'percentage') makingStr = `(${product.makingCharges}%)`;
+      else if (product.makingChargeType === 'per_gram') makingStr = `(₹${product.makingCharges}/g)`;
+
+      breakdownText = `\n🪙 Material Value: ₹${Math.round(rawGoldValue).toLocaleString('en-IN')}\n✨ Making Charges ${makingStr}: ₹${Math.round(makingChargeTotal).toLocaleString('en-IN')}\n⚖️ GST (3%): ₹${Math.round(gst).toLocaleString('en-IN')}\n`;
     }
 
     return `✨ ${product.name}
 ${product.materialType === 'silver' ? 'Silver' : 'Hallmarked Gold'}
 
 ⚖️ Weight: ${product.weightGrams}g
-${product.sku ? `[SKU: ${product.sku}]\n` : ''}
-💰 Today's Price: ₹${totalPrice.toLocaleString('en-IN')}
-*(Incl. making & 3% GST)*
-
+${product.sku ? `[SKU: ${product.sku}]` : ''}${breakdownText}
+💰 Total Price: ₹${totalPrice.toLocaleString('en-IN')}
+${product.isPriceLocked ? '*(Incl. making & 3% GST)*\n' : ''}
 ✓ BIS Hallmarked
 ✓ Certified
 ✓ Insured Shipping
 
 Reply to this message to book an appointment or ask for similar designs! 💛`;
-  } else if (rates) {
-    // Fallback to default calculation
-    const defaultWeight = 15;
-    const defaultMaking = 12000;
-    const ratePerGram = rates.goldRate22k || 0; // Defaulting to 22K Gold
-
-    const basePrice = (defaultWeight * ratePerGram) + defaultMaking;
-    const gst = basePrice * 0.03;
-    const totalPrice = Math.round(basePrice + gst);
-
-    return `✨ Jewelry Piece (Estimate)
-22K Hallmarked Gold
-
-⚖️ Weight: ${defaultWeight}g (Est.)
-
-💰 Estimated Price: ₹${totalPrice.toLocaleString('en-IN')}
-*(Incl. making & 3% GST)*
-
-*(Note: This is a standard estimate. For exact details of this specific piece, please reply directly to this message with a screenshot!)* 💛`;
   }
   
-  return "Thank you for asking! 💛 Please wait a moment while our team gets back to you with the exact pricing for this item.";
+  return "👋 Hey there! To give you the exact price, could you please share the reel, reply directly to the story, or comment on the post of the specific jewelry piece you're interested in? 💛\n\nOur team will check the details and get back to you with the exact live price!\n\n*(Note: Please avoid sending screenshots for price checks. Images are only used if you want to place a custom jewelry order.)*";
 }
 
 /* ════════════════════════════════════════
@@ -239,7 +229,7 @@ async function handleDM(event: Record<string, any>) {
 
   // 5. PRICE CHECK (From Story Reply OR general DM)
   const replyToStory = event.message?.reply_to?.story;
-  if (messageText.includes("price") || messageText.includes("cost") || messageText.includes("how much") || messageText.includes("pp")) {
+  if (messageText.includes("price")) {
     const reelId = replyToStory?.id;
     
     let dmMessage = replyToStory 
@@ -287,7 +277,7 @@ async function handleComment(change: Record<string, any>) {
   console.log(`[handleComment] Received comment ${commentId} from ${commenterUsername}: "${commentText}" (mediaId: ${mediaId})`);
 
   // 👉 Comment Price Inquiry
-  if (commentText.includes("price") || commentText.includes("cost") || commentText.includes("pp") || commentText.includes("how much")) {
+  if (commentText.includes("price")) {
     
     // ANTI-LOOP: Prevent bot from replying to its own comment if IG_ID is wrong
     if (commentText.includes("sent to your dm") || commentText.includes("message requests")) {
