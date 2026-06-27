@@ -227,12 +227,21 @@ async function handleDM(event: Record<string, any>) {
     }
   }
 
-  // 5. PRICE CHECK (From Story Reply OR general DM)
+  // 5. PRICE CHECK (From Story Reply OR general DM OR shared post)
   const replyToStory = event.message?.reply_to?.story;
-  if (messageText.includes("price")) {
-    const reelId = replyToStory?.id;
-    const hasAttachment = event.message?.attachments && event.message.attachments.length > 0;
+  
+  let sharedMediaId = null;
+  const hasAttachment = event.message?.attachments && event.message.attachments.length > 0;
+  if (hasAttachment) {
+    const attachment = event.message.attachments[0];
+    if (attachment.type === 'ig_post' || attachment.type === 'ig_reel' || attachment.type === 'share') {
+      sharedMediaId = attachment.payload?.ig_post_media_id || attachment.payload?.ig_reel_media_id || attachment.payload?.id;
+    }
+  }
 
+  const reelId = replyToStory?.id || sharedMediaId;
+
+  if (messageText.includes("price") || sharedMediaId) {
     let product = null;
     if (reelId) {
       // Fetch product details based on reelId
