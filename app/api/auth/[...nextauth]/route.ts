@@ -14,12 +14,19 @@ export const authOptions = {
   ],
   callbacks: {
     async signIn({ user }: { user: any }) {
+      console.log("[NextAuth] signIn callback triggered for email:", user?.email);
+      console.log("[NextAuth] allowed emails list:", allowedEmails);
+      
       if (user.email && allowedEmails.includes(user.email.toLowerCase())) {
+        console.log("[NextAuth] Email IS in allowed list. Approving login.");
         return true;
       }
-      return false; // Redirects to an error page or access denied
+      
+      console.log("[NextAuth] Email NOT in allowed list. Rejecting login.");
+      return false;
     },
     async session({ session, token }: { session: any, token: any }) {
+      console.log("[NextAuth] session callback triggered.");
       return session;
     },
   },

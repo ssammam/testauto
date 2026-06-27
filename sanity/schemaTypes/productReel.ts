@@ -93,10 +93,25 @@ export const productReelType = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
+      name: 'makingChargeType',
+      title: 'Making Charge Type',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Percentage (%) of Gold Value', value: 'percentage' },
+          { title: 'Flat Amount (₹)', value: 'flat' },
+          { title: 'Per Gram (₹/g)', value: 'per_gram' },
+        ],
+      },
+      initialValue: 'percentage',
+      validation: (rule) => rule.required(),
+    }),
+    defineField({
       name: 'makingCharges',
-      title: 'Making Charges (Percentage or Flat)',
+      title: 'Making Charges Value',
       type: 'number',
-      description: 'Enter flat amount or percentage (we will calculate based on app settings).',
+      description: 'Enter the percentage (e.g. 15 for 15%) or flat amount.',
+      validation: (rule) => rule.required(),
     }),
     defineField({
       name: 'isPriceLocked',

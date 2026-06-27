@@ -95,7 +95,18 @@ function buildProductDmMessage(product: any, rates: any, isEstimate: boolean = f
       else if (product.materialType === 'gold24k') ratePerGram = rates?.goldRate24k || 0;
       else if (product.materialType === 'silver') ratePerGram = rates?.silverRate || 0;
 
-      const basePrice = (product.weightGrams * ratePerGram) + (product.makingCharges || 0);
+      const rawGoldValue = product.weightGrams * ratePerGram;
+      let makingChargeTotal = 0;
+      
+      if (product.makingChargeType === 'percentage') {
+        makingChargeTotal = rawGoldValue * ((product.makingCharges || 0) / 100);
+      } else if (product.makingChargeType === 'per_gram') {
+        makingChargeTotal = (product.makingCharges || 0) * product.weightGrams;
+      } else {
+        makingChargeTotal = product.makingCharges || 0;
+      }
+
+      const basePrice = rawGoldValue + makingChargeTotal;
       const gst = basePrice * 0.03; // 3% GST
       totalPrice = Math.round(basePrice + gst);
     }
