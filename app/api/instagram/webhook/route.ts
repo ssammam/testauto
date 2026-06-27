@@ -100,14 +100,18 @@ function buildProductDmMessage(product: any, rates: any, isEstimate: boolean = f
       else if (product.materialType === 'gold24k') ratePerGram = rates?.goldRate24k || 0;
       else if (product.materialType === 'silver') ratePerGram = rates?.silverRate || 0;
 
-      rawGoldValue = product.weightGrams * ratePerGram;
+      if (!ratePerGram) ratePerGram = rates?.goldRate22k || 0; // Default to 22k if missing
+
+      const weight = product.weightGrams || 0;
+      rawGoldValue = weight * ratePerGram;
       
+      const makingCharges = product.makingCharges || 0;
       if (product.makingChargeType === 'percentage') {
-        makingChargeTotal = rawGoldValue * ((product.makingCharges || 0) / 100);
+        makingChargeTotal = rawGoldValue * (makingCharges / 100);
       } else if (product.makingChargeType === 'per_gram') {
-        makingChargeTotal = (product.makingCharges || 0) * product.weightGrams;
+        makingChargeTotal = makingCharges * weight;
       } else {
-        makingChargeTotal = product.makingCharges || 0;
+        makingChargeTotal = makingCharges;
       }
 
       const basePrice = rawGoldValue + makingChargeTotal;
@@ -115,8 +119,8 @@ function buildProductDmMessage(product: any, rates: any, isEstimate: boolean = f
       totalPrice = Math.round(basePrice + gst);
 
       let makingStr = "";
-      if (product.makingChargeType === 'percentage') makingStr = `(${product.makingCharges}%)`;
-      else if (product.makingChargeType === 'per_gram') makingStr = `(₹${product.makingCharges}/g)`;
+      if (product.makingChargeType === 'percentage') makingStr = `(${makingCharges}%)`;
+      else if (product.makingChargeType === 'per_gram') makingStr = `(₹${makingCharges}/g)`;
 
       breakdownText = `\n🪙 Material Value: ₹${Math.round(rawGoldValue).toLocaleString('en-IN')}\n✨ Making Charges ${makingStr}: ₹${Math.round(makingChargeTotal).toLocaleString('en-IN')}\n⚖️ GST (3%): ₹${Math.round(gst).toLocaleString('en-IN')}\n`;
     }
@@ -173,8 +177,8 @@ async function handleDM(event: Record<string, any>) {
   }
 
   // 2. DETECT BOOKING INTENT (date/time/visit)
-  if (messageText.includes("visit") || messageText.includes("tomorrow") || messageText.includes("today") || messageText.includes("book")) {
-    await dmText(senderId, "🗓️ Would you like to schedule a visit? Please provide a date, time, and your phone number so our team can get ready for you!");
+  if (messageText.includes("visit") || messageText.includes("appointment") || messageText.includes("schedule") || messageText.includes("tomorrow") || messageText.includes("today") || messageText.includes("book")) {
+    await dmText(senderId, "🗓️ Would you like to schedule an appointment/visit? Please share your phone number, along with your preferred date and time! Our team will schedule it for you. 💛");
     
     // Save lead as New
     await writeClient.create({
@@ -208,7 +212,7 @@ async function handleDM(event: Record<string, any>) {
   const phoneRegex = /\b\d{10}\b/;
   if (phoneRegex.test(messageText)) {
     const phone = messageText.match(phoneRegex)?.[0];
-    await dmText(senderId, `✅ Thank you! We have noted your number (${phone}). We'll be ready for your visit.`);
+    await dmText(senderId, `✅ Thank you! We have noted your number (${phone}) and scheduled your visit.\n\n📍 Our flagship store is located at: 123 Gold Market Road, Bangalore.\n\nWe are wishing you a wonderful visit and looking forward to hosting you! 💛`);
     
     // Update lead with phone number
     const existingLead = await client.fetch(`*[_type == "lead" && instagramUsername == $username] | order(_createdAt desc)[0]`, { username });
@@ -255,7 +259,20 @@ async function handleDM(event: Record<string, any>) {
     if (product) {
       dmMessage = buildProductDmMessage(product, rates);
     } else if (reelId || hasAttachment) {
-      dmMessage = "Hmm, it looks like the post or reel you shared isn't currently recognized in our active catalog, or it might be a random post from another page! 😅\n\nPlease make sure you are sharing one of our official products so we can give you the exact price. If this is our product, our team will get back to you shortly! 💛";
+      let isOurPost = false;
+      if (reelId) {
+        try {
+          const baseUrl = TOKEN.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
+          const mediaRes = await fetch(`${baseUrl}/v25.0/${reelId}?access_token=${TOKEN}`);
+          if (mediaRes.ok) isOurPost = true;
+        } catch (e) {}
+      }
+
+      if (isOurPost) {
+        dmMessage = "👋 Hey there! You've shared one of our pieces! 💛 However, the exact live price for this specific item hasn't been updated in our system yet.\n\nOur team is checking the details and will get back to you shortly, or you can leave your contact number here for immediate assistance!";
+      } else {
+        dmMessage = "Hmm, it looks like the post or reel you shared isn't recognized, or it might be a random post from another page! 😅\n\nPlease make sure you are sharing one of our official products so we can assist you. If this is our product, our team will get back to you shortly! 💛";
+      }
     } else {
       dmMessage = buildProductDmMessage(null, rates);
     }
