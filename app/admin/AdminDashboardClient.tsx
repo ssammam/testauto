@@ -59,8 +59,47 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
 
   const result = calculateFinalPrice();
 
+  // Ensure rates exist for the ticker
+  const hasRates = initialRates && Object.keys(initialRates).length > 0;
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="space-y-8">
+      {/* LIVE RATES TICKER */}
+      {hasRates && (
+        <div className="bg-[#1a1a1a] rounded-xl overflow-hidden border border-[#e1b366]/30 shadow-[0_0_15px_rgba(225,179,102,0.15)] flex items-center">
+          <div className="bg-gradient-to-r from-[#7c6a46] to-[#e1b366] text-white px-4 py-3 font-bold text-sm tracking-widest uppercase flex items-center gap-2 whitespace-nowrap z-10 shadow-lg">
+            <span className="relative flex h-2.5 w-2.5 mr-1">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+            </span>
+            LIVE RATES
+          </div>
+          <div className="flex-1 overflow-hidden relative">
+            <div className="animate-marquee whitespace-nowrap flex items-center text-[#e1b366] font-medium text-sm py-3 px-4">
+              <span className="mx-4 text-white/50">•</span>
+              <span>24K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate24k?.toLocaleString('en-IN') || 0}/g</span></span>
+              <span className="mx-4 text-white/50">•</span>
+              <span>22K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate22k?.toLocaleString('en-IN') || 0}/g</span></span>
+              <span className="mx-4 text-white/50">•</span>
+              <span>18K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate18k?.toLocaleString('en-IN') || 0}/g</span></span>
+              <span className="mx-4 text-white/50">•</span>
+              <span>Silver: <span className="text-white font-bold tracking-wide">₹{initialRates.silverRate?.toLocaleString('en-IN') || 0}/g</span></span>
+              <span className="mx-4 text-white/50">•</span>
+              
+              {/* Duplicate for seamless infinite scroll */}
+              <span>24K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate24k?.toLocaleString('en-IN') || 0}/g</span></span>
+              <span className="mx-4 text-white/50">•</span>
+              <span>22K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate22k?.toLocaleString('en-IN') || 0}/g</span></span>
+              <span className="mx-4 text-white/50">•</span>
+              <span>18K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate18k?.toLocaleString('en-IN') || 0}/g</span></span>
+              <span className="mx-4 text-white/50">•</span>
+              <span>Silver: <span className="text-white font-bold tracking-wide">₹{initialRates.silverRate?.toLocaleString('en-IN') || 0}/g</span></span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* UPDATE RATES CARD */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
         <div className="border-b border-gray-100 p-6 bg-gray-50/50">
@@ -224,6 +263,7 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

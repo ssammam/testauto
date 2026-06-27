@@ -194,7 +194,7 @@ async function handleDM(event: Record<string, any>) {
 
   // 2.5 DETECT LOCATION INTENT
   if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address")) {
-    await dmText(senderId, "📍 Our flagship store is located at: 123 Gold Market Road, Bangalore.\n\nWe'd love to host you! Could you please share your phone number so we can book a VIP store visit for you? 💛");
+    await dmText(senderId, "📍 Our store is located at: 312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Maps: https://maps.app.goo.gl/U1shqm6TSeJFTNvi6\n\nWe'd love to host you! Could you please share your phone number so we can book a VIP store visit for you? 💛");
     
     // Save lead as New
     await writeClient.create({
@@ -219,7 +219,7 @@ async function handleDM(event: Record<string, any>) {
       extractedDate = "Date not specified";
     }
 
-    await dmText(senderId, `✅ Thank you! We have noted your number (${phone}) and your visit details (${extractedDate}). We'll be ready for you.`);
+    await dmText(senderId, `✅ Thank you! We have noted your appointment details. We'll be waiting for you! 💛\n\n📍 Location: 312 Kuvempu Road, Kengeri, Bengaluru\n🗺️ Map: https://maps.app.goo.gl/U1shqm6TSeJFTNvi6\n📞 Contact: +91 9876543210`);
     
     // Update lead with phone number AND visit date
     const existingLead = await client.fetch(`*[_type == "lead" && instagramUsername == $username] | order(_createdAt desc)[0]`, { username });
