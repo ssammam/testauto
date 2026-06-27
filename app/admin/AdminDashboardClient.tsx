@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { saveDailyRates } from './actions';
 import { Calculator, Save, TrendingUp, CheckCircle2, Image as ImageIcon, Download, Upload } from 'lucide-react';
 
-export default function AdminDashboardClient({ initialRates }: { initialRates: any }) {
+export default function AdminDashboardClient({ initialRates, templates = [] }: { initialRates: any, templates?: any[] }) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -63,6 +63,37 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [cardGenerated, setCardGenerated] = useState(false);
+  
+  // Draggable / Adjustable text coordinates
+  const [textX, setTextX] = useState(140);
+  const [textY, setTextY] = useState(850);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+
+  const loadTemplate = (url: string, defX = 140, defY = 850) => {
+    setTextX(defX);
+    setTextY(defY);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      setBgImage(img);
+      drawCard(img, defX, defY);
+    };
+    img.src = url;
+  };
+
+  const handleTemplateSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const tmplId = e.target.value;
+    setSelectedTemplate(tmplId);
+    if (!tmplId) {
+      setBgImage(null);
+      setCardGenerated(false);
+      return;
+    }
+    const tmpl = templates.find(t => t._id === tmplId);
+    if (tmpl && tmpl.imageUrl) {
+      loadTemplate(tmpl.imageUrl, tmpl.textX || 140, tmpl.textY || 850);
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -80,7 +111,7 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
     }
   };
 
-  const drawCard = (img: HTMLImageElement | null = bgImage) => {
+  const drawCard = (img: HTMLImageElement | null = bgImage, currentX = textX, currentY = textY) => {
     if (!img || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -116,7 +147,7 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
     ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
     ctx.strokeStyle = '#e1b366';
     ctx.lineWidth = 4;
-    ctx.roundRect(140, 850, 800, 600, 30);
+    ctx.roundRect(currentX, currentY, 800, 600, 30);
     ctx.fill();
     ctx.stroke();
 
@@ -131,13 +162,13 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
       { label: 'SILVER', value: `₹${parseFloat(initialRates?.silverRate || '0').toLocaleString('en-IN')} /kg` },
     ];
 
-    let yPos = 970;
+    let yPos = currentY + 120;
     ratesData.forEach((item) => {
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(item.label, 200, yPos);
+      ctx.fillText(item.label, currentX + 60, yPos);
       ctx.fillStyle = '#e1b366';
       ctx.textAlign = 'right';
-      ctx.fillText(item.value, 880, yPos);
+      ctx.fillText(item.value, currentX + 740, yPos);
       ctx.textAlign = 'left';
       yPos += 130;
     });
@@ -145,10 +176,10 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
     setCardGenerated(true);
   };
 
-  // Redraw if rates change
+  // Redraw if rates or positions change
   useEffect(() => {
-    if (bgImage) drawCard();
-  }, [initialRates, bgImage]);
+    if (bgImage) drawCard(bgImage, textX, textY);
+  }, [initialRates, bgImage, textX, textY]);
 
   const downloadCard = () => {
     if (!canvasRef.current) return;
@@ -373,14 +404,26 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
               <div className="bg-[#f0ece1] p-2 rounded-lg">
                 <ImageIcon className="w-5 h-5 text-[#7c6a46]" />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900">Instagram Story Generator</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Gold Rate Card Generator</h2>
             </div>
-            <p className="text-sm text-gray-500 mt-2">Upload a background template and we'll automatically stamp today's live rates onto it for you to download!</p>
+            <p className="text-sm text-gray-500 mt-2">Select a template from Sanity or upload your own, and adjust the text to fit perfectly.</p>
           </div>
-          <div>
+          <div className="flex gap-2">
+            {templates.length > 0 && (
+              <select 
+                value={selectedTemplate}
+                onChange={handleTemplateSelect}
+                className="bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-medium focus:ring-[#7c6a46] focus:border-[#7c6a46] shadow-sm"
+              >
+                <option value="">-- Choose Template --</option>
+                {templates.map(t => (
+                  <option key={t._id} value={t._id}>{t.name}</option>
+                ))}
+              </select>
+            )}
             <label className="cursor-pointer bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm">
               <Upload className="w-4 h-4" />
-              Upload Template
+              Upload Own
               <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             </label>
           </div>
@@ -392,12 +435,34 @@ export default function AdminDashboardClient({ initialRates }: { initialRates: a
             {!cardGenerated && (
               <div className="text-center p-6 text-gray-400 z-0">
                 <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <p className="font-medium text-sm">Upload a background image (1080x1920) to generate your custom rate card.</p>
+                <p className="font-medium text-sm">Select a template or upload an image to start.</p>
               </div>
             )}
           </div>
           
           <div className="flex flex-col gap-4 max-w-xs w-full">
+            {cardGenerated && (
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <h4 className="font-semibold text-gray-900">Adjust Position</h4>
+                
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Horizontal (Left/Right)</span>
+                    <span>{textX}</span>
+                  </div>
+                  <input type="range" min="0" max="1080" value={textX} onChange={(e) => setTextX(Number(e.target.value))} className="w-full accent-[#7c6a46]" />
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Vertical (Up/Down)</span>
+                    <span>{textY}</span>
+                  </div>
+                  <input type="range" min="0" max="1920" value={textY} onChange={(e) => setTextY(Number(e.target.value))} className="w-full accent-[#7c6a46]" />
+                </div>
+              </div>
+            )}
+
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
               <h4 className="font-semibold text-gray-900 mb-2">How it works:</h4>
               <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">

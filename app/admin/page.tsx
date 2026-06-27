@@ -13,6 +13,13 @@ export default async function AdminPage() {
   const latestRates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
   const productReels = await client.fetch(`*[_type == "productReel"] | order(_createdAt desc)`);
   const leads = await client.fetch(`*[_type == "lead"] | order(_createdAt desc)`);
+  const rateCardTemplates = await client.fetch(`*[_type == "rateCardTemplate"]{
+    _id,
+    name,
+    "imageUrl": backgroundImage.asset->url,
+    textX,
+    textY
+  }`);
   const session = await getServerSession(authOptions);
   
   if (!session) {
@@ -24,7 +31,7 @@ export default async function AdminPage() {
       <div className="max-w-6xl mx-auto space-y-8">
         <AdminHeader email={session?.user?.email || null} />
 
-        <AdminDashboardClient initialRates={latestRates || {}} />
+        <AdminDashboardClient initialRates={latestRates || {}} templates={rateCardTemplates || []} />
         <LeadManagerClient initialLeads={leads || []} />
         <PostManagerClient initialPosts={productReels || []} />
       </div>
