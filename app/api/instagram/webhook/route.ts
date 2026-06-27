@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { client, writeClient } from "@/sanity/lib/client";
 
@@ -78,6 +78,65 @@ async function dmText(id: string, text: string) {
   await sendDM({ id }, { message: { text } });
 }
 
+/** Build Smart DM Message for Product */
+function buildProductDmMessage(product: any, rates: any, isEstimate: boolean = false): string {
+  if (product) {
+    if (product.status === 'sold') {
+      return "✨ This beautiful piece has already been sold! Please DM us to check for similar designs or to place a custom order. 💛";
+    }
+
+    let totalPrice = 0;
+    if (product.isPriceLocked && product.lockedPrice) {
+      totalPrice = product.lockedPrice;
+    } else {
+      let ratePerGram = 0;
+      if (product.materialType === 'gold18k') ratePerGram = rates?.goldRate18k || 0;
+      else if (product.materialType === 'gold22k') ratePerGram = rates?.goldRate22k || 0;
+      else if (product.materialType === 'gold24k') ratePerGram = rates?.goldRate24k || 0;
+      else if (product.materialType === 'silver') ratePerGram = rates?.silverRate || 0;
+
+      const basePrice = (product.weightGrams * ratePerGram) + (product.makingCharges || 0);
+      const gst = basePrice * 0.03; // 3% GST
+      totalPrice = Math.round(basePrice + gst);
+    }
+
+    return `✨ ${product.name}
+${product.materialType === 'silver' ? 'Silver' : 'Hallmarked Gold'}
+
+⚖️ Weight: ${product.weightGrams}g
+${product.sku ? `[SKU: ${product.sku}]\n` : ''}
+💰 Today's Price: ₹${totalPrice.toLocaleString('en-IN')}
+*(Incl. making & 3% GST)*
+
+✓ BIS Hallmarked
+✓ Certified
+✓ Insured Shipping
+
+Reply to this message to book an appointment or ask for similar designs! 💛`;
+  } else if (rates) {
+    // Fallback to default calculation
+    const defaultWeight = 15;
+    const defaultMaking = 12000;
+    const ratePerGram = rates.goldRate22k || 0; // Defaulting to 22K Gold
+
+    const basePrice = (defaultWeight * ratePerGram) + defaultMaking;
+    const gst = basePrice * 0.03;
+    const totalPrice = Math.round(basePrice + gst);
+
+    return `✨ Jewelry Piece (Estimate)
+22K Hallmarked Gold
+
+⚖️ Weight: ${defaultWeight}g (Est.)
+
+💰 Estimated Price: ₹${totalPrice.toLocaleString('en-IN')}
+*(Incl. making & 3% GST)*
+
+*(Note: This is a standard estimate. For exact details of this specific piece, please reply directly to this message with a screenshot!)* 💛`;
+  }
+  
+  return "Thank you for asking! 💛 Please wait a moment while our team gets back to you with the exact pricing for this item.";
+}
+
 /* ════════════════════════════════════════
    HANDLE INCOMING DM
 ════════════════════════════════════════ */
@@ -115,6 +174,22 @@ async function handleDM(event: Record<string, any>) {
   // 2. DETECT BOOKING INTENT (date/time/visit)
   if (messageText.includes("visit") || messageText.includes("tomorrow") || messageText.includes("today") || messageText.includes("book")) {
     await dmText(senderId, "🗓️ Would you like to schedule a visit? Please provide a date, time, and your phone number so our team can get ready for you!");
+    
+    // Save lead as New
+    await writeClient.create({
+      _type: 'lead',
+      instagramUsername: username,
+      name: name,
+      queryType: 'General',
+      status: 'New',
+      reportedInDailyEmail: false
+    });
+    return;
+  }
+
+  // 2.5 DETECT LOCATION INTENT
+  if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address")) {
+    await dmText(senderId, "📍 Our flagship store is located at: 123 Gold Market Road, Bangalore.\n\nWe'd love to host you! Could you please share your phone number so we can book a VIP store visit for you? 💛");
     
     // Save lead as New
     await writeClient.create({
@@ -169,29 +244,8 @@ async function handleDM(event: Record<string, any>) {
     // Fetch today's rates
     const rates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
     
-    if (product && rates) {
-      let ratePerGram = 0;
-      if (product.materialType === 'gold18k') ratePerGram = rates.goldRate18k;
-      else if (product.materialType === 'gold22k') ratePerGram = rates.goldRate22k;
-      else if (product.materialType === 'gold24k') ratePerGram = rates.goldRate24k;
-      else if (product.materialType === 'silver') ratePerGram = rates.silverRate;
-
-      const basePrice = (product.weightGrams * ratePerGram) + (product.makingCharges || 0);
-      const gst = basePrice * 0.03; // 3% GST
-      const totalPrice = Math.round(basePrice + gst);
-
-      dmMessage = `✨ ${product.name}\nWeight: ${product.weightGrams}g\nMaterial: ${product.materialType === 'silver' ? 'Silver' : 'Gold'}\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)`;
-    } else if (rates) {
-      // Fallback to default calculation
-      const defaultWeight = 1500;
-      const defaultMaking = 12000;
-      const ratePerGram = rates.goldRate22k || 0; // Defaulting to 22K Gold
-
-      const basePrice = (defaultWeight * ratePerGram) + defaultMaking;
-      const gst = basePrice * 0.03;
-      const totalPrice = Math.round(basePrice + gst);
-
-      dmMessage = `✨ Standard Jewelry Piece\nWeight: ${defaultWeight}g\nMaterial: 22K Gold\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)\n\n*(Note: This is a standard estimate. For exact details of a specific piece, please send us a screenshot or reply directly to the post/reel!)*`;
+    if (product || rates) {
+      dmMessage = buildProductDmMessage(product, rates);
     } else {
       dmMessage = "Thank you for asking! 💛 Please wait a moment while our team gets back to you with the exact pricing for this item.";
     }
@@ -248,29 +302,8 @@ async function handleComment(change: Record<string, any>) {
 
         const rates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
 
-        if (product && rates) {
-          let ratePerGram = 0;
-          if (product.materialType === 'gold18k') ratePerGram = rates.goldRate18k;
-          else if (product.materialType === 'gold22k') ratePerGram = rates.goldRate22k;
-          else if (product.materialType === 'gold24k') ratePerGram = rates.goldRate24k;
-          else if (product.materialType === 'silver') ratePerGram = rates.silverRate;
-
-          const basePrice = (product.weightGrams * ratePerGram) + (product.makingCharges || 0);
-          const gst = basePrice * 0.03; // 3% GST
-          const totalPrice = Math.round(basePrice + gst);
-
-          dmMessage = `✨ ${product.name}\nWeight: ${product.weightGrams}g\nMaterial: ${product.materialType === 'silver' ? 'Silver' : 'Gold'}\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)`;
-        } else if (rates) {
-          // Fallback to default calculation if product is not found
-          const defaultWeight = 1500;
-          const defaultMaking = 12000;
-          const ratePerGram = rates.goldRate22k || 0; // Defaulting to 22K Gold
-
-          const basePrice = (defaultWeight * ratePerGram) + defaultMaking;
-          const gst = basePrice * 0.03;
-          const totalPrice = Math.round(basePrice + gst);
-
-          dmMessage = `✨ Jewelry Piece (Estimate)\nWeight: ${defaultWeight}g\nMaterial: 22K Gold\n\nEstimated Price: ₹${totalPrice.toLocaleString('en-IN')} (incl. making charges & 3% GST)\n\n*(Note: This is a standard estimate. For exact details of this specific piece, please reply to this message!)*`;
+        if (product || rates) {
+          dmMessage = buildProductDmMessage(product, rates);
         } else {
           dmMessage += " Please reply to this message and our team will get back to you with the exact live price for that item!";
         }
@@ -282,6 +315,37 @@ async function handleComment(change: Record<string, any>) {
         console.error("[handleComment] DM to commenter skipped:", err);
       }
     }
+    return;
+  }
+
+  // 👉 Comment Location Inquiry
+  if (commentText.includes("location") || commentText.includes("where") || commentText.includes("address")) {
+    if (commentText.includes("dm") || commentText.includes("message requests")) return; // Anti-loop
+    
+    if (commentId) {
+      const replyMsg = commenterUsername
+        ? `@${commenterUsername} ✨ Our store is in Bangalore! I have sent you a DM with the exact address and map link. 💛`
+        : `✨ Our store is in Bangalore! I have sent you a DM with the exact address and map link. 💛`;
+      await replyToComment(commentId, replyMsg);
+      
+      try {
+        const dmMessage = "📍 Our flagship store is located at: 123 Gold Market Road, Bangalore.\n\nWe'd love to host you! Could you please share your phone number here in the chat so we can book a VIP store visit for you? 💛";
+        await sendDM({ comment_id: commentId }, { message: { text: dmMessage } });
+        
+        // Save lead
+        await writeClient.create({
+          _type: 'lead',
+          instagramUsername: commenterUsername,
+          name: commenterUsername,
+          queryType: 'General',
+          status: 'New',
+          reportedInDailyEmail: false
+        });
+      } catch (err) {
+        console.error("[handleComment] Location DM to commenter skipped:", err);
+      }
+    }
+    return;
   } else {
     console.log(`[handleComment] Comment didn't match price keywords. Text: "${commentText}"`);
   }
@@ -328,19 +392,26 @@ export async function POST(req: NextRequest) {
 
   console.log("Processing webhook entry:", JSON.stringify(body.entry, null, 2));
 
-  for (const entry of body.entry || []) {
-    // ── DMs ──
-    for (const event of entry.messaging || []) {
-      await handleDM(event).catch(e => console.error("DM handler error:", e));
-    }
+  // Use Next.js 'after' to process tasks in the background!
+  // This instantly returns 200 OK to Meta so we NEVER hit Meta's timeout deadline,
+  // even if 200 comments come in at once.
+  after(async () => {
+    console.log("[Background Queue] Starting to process webhook events...");
+    for (const entry of body.entry || []) {
+      // ── DMs ──
+      for (const event of entry.messaging || []) {
+        await handleDM(event).catch(e => console.error("DM handler error:", e));
+      }
 
-    // ── Comments ──
-    for (const change of entry.changes || []) {
-      if (change.field === "comments") {
-        await handleComment(change).catch(e => console.error("Comment handler error:", e));
+      // ── Comments ──
+      for (const change of entry.changes || []) {
+        if (change.field === "comments") {
+          await handleComment(change).catch(e => console.error("Comment handler error:", e));
+        }
       }
     }
-  }
+    console.log("[Background Queue] Finished processing events.");
+  });
 
   return NextResponse.json({ status: "ok" });
 }

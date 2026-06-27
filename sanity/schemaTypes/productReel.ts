@@ -11,11 +11,66 @@ export const productReelType = defineType({
       type: 'string',
     }),
     defineField({
+      name: 'sku',
+      title: 'SKU / Product ID',
+      type: 'string',
+    }),
+    defineField({
+      name: 'status',
+      title: 'Status',
+      type: 'string',
+      options: {
+        list: [
+          { title: '🟢 Active', value: 'active' },
+          { title: '🟡 Draft', value: 'draft' },
+          { title: '🔴 Sold Out', value: 'sold' },
+          { title: '⚫ Hidden', value: 'hidden' },
+        ],
+      },
+      initialValue: 'active',
+    }),
+    defineField({
+      name: 'category',
+      title: 'Category',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Rings', value: 'rings' },
+          { title: 'Chains', value: 'chains' },
+          { title: 'Bangles', value: 'bangles' },
+          { title: 'Necklaces', value: 'necklaces' },
+          { title: 'Earrings', value: 'earrings' },
+          { title: 'Pendants', value: 'pendants' },
+          { title: 'Bridal', value: 'bridal' },
+          { title: 'Temple Jewellery', value: 'temple' },
+          { title: 'Silver', value: 'silver' },
+        ],
+      },
+    }),
+    defineField({
       name: 'reelId',
       title: 'Instagram Reel ID',
       type: 'string',
       description: 'The ID of the Instagram reel for this product (used by webhook).',
       validation: (rule) => rule.required(),
+    }),
+    defineField({
+      name: 'description',
+      title: 'Post Description',
+      type: 'text',
+      description: 'The description or caption of the post.',
+    }),
+    defineField({
+      name: 'thumbnailUrl',
+      title: 'Thumbnail URL',
+      type: 'url',
+      description: 'URL of the post thumbnail or image.',
+    }),
+    defineField({
+      name: 'publishedAt',
+      title: 'Published At',
+      type: 'datetime',
+      description: 'The date and time the post was published on Instagram.',
     }),
     defineField({
       name: 'materialType',
@@ -42,6 +97,25 @@ export const productReelType = defineType({
       title: 'Making Charges (Percentage or Flat)',
       type: 'number',
       description: 'Enter flat amount or percentage (we will calculate based on app settings).',
+    }),
+    defineField({
+      name: 'isPriceLocked',
+      title: 'Lock Price',
+      type: 'boolean',
+      description: 'If true, the locked price will be used instead of live calculation.',
+      initialValue: false,
+    }),
+    defineField({
+      name: 'lockedPrice',
+      title: 'Locked Price (₹)',
+      type: 'number',
+      description: 'Fixed price to show if Price is Locked.',
+    }),
+    defineField({
+      name: 'notes',
+      title: 'Private Notes',
+      type: 'text',
+      description: 'Internal notes for staff (never shown to customers).',
     }),
   ],
 })
