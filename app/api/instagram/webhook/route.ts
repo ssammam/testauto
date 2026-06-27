@@ -177,8 +177,8 @@ async function handleDM(event: Record<string, any>) {
   }
 
   // 2. DETECT BOOKING INTENT (date/time/visit)
-  if (messageText.includes("visit") || messageText.includes("appointment") || messageText.includes("schedule") || messageText.includes("tomorrow") || messageText.includes("today") || messageText.includes("book")) {
-    await dmText(senderId, "🗓️ Would you like to schedule an appointment/visit? Please share your phone number, along with your preferred date and time! Our team will schedule it for you. 💛");
+  if (messageText.includes("visit") || messageText.includes("tomorrow") || messageText.includes("today") || messageText.includes("book")) {
+    await dmText(senderId, "🗓️ Would you like to schedule a visit? Please provide a date and your phone number so our team can get ready for you!");
     
     // Save lead as New
     await writeClient.create({
@@ -208,16 +208,26 @@ async function handleDM(event: Record<string, any>) {
     return;
   }
   
-  // 3. DETECT PHONE NUMBER
+  // 3. DETECT PHONE NUMBER & VISIT DATE
   const phoneRegex = /\b\d{10}\b/;
   if (phoneRegex.test(messageText)) {
     const phone = messageText.match(phoneRegex)?.[0];
-    await dmText(senderId, `✅ Thank you! We have noted your number (${phone}) and scheduled your visit.\n\n📍 Our flagship store is located at: 123 Gold Market Road, Bangalore.\n\nWe are wishing you a wonderful visit and looking forward to hosting you! 💛`);
     
-    // Update lead with phone number
+    // Extract everything else in the message as the "date" (removing the phone number)
+    let extractedDate = rawMessageText.replace(phoneRegex, "").trim();
+    if (extractedDate.length < 2) {
+      extractedDate = "Date not specified";
+    }
+
+    await dmText(senderId, `✅ Thank you! We have noted your number (${phone}) and your visit details (${extractedDate}). We'll be ready for you.`);
+    
+    // Update lead with phone number AND visit date
     const existingLead = await client.fetch(`*[_type == "lead" && instagramUsername == $username] | order(_createdAt desc)[0]`, { username });
     if (existingLead) {
-      await writeClient.patch(existingLead._id).set({ phoneNumber: phone }).commit();
+      await writeClient.patch(existingLead._id).set({ 
+        phoneNumber: phone,
+        visitDate: extractedDate
+      }).commit();
     }
     return;
   }
@@ -252,8 +262,8 @@ async function handleDM(event: Record<string, any>) {
       product = await client.fetch(`*[_type == "productReel" && reelId == $reelId][0]`, { reelId });
     }
 
-    // Fetch today's rates
-    const rates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
+    // Fetch today's rates (using _updatedAt to always get the latest even if date is missing)
+    const rates = await client.fetch(`*[_type == "dailyPrice"] | order(_updatedAt desc)[0]`);
     
     let dmMessage = "";
     if (product) {
@@ -327,7 +337,7 @@ async function handleComment(change: Record<string, any>) {
           product = await client.fetch(`*[_type == "productReel" && reelId == $mediaId][0]`, { mediaId });
         }
 
-        const rates = await client.fetch(`*[_type == "dailyPrice"] | order(date desc)[0]`);
+        const rates = await client.fetch(`*[_type == "dailyPrice"] | order(_updatedAt desc)[0]`);
 
         if (product) {
           dmMessage = buildProductDmMessage(product, rates);

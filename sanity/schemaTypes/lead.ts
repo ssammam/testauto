@@ -31,13 +31,10 @@ export const leadType = defineType({
     defineField({
       name: 'visitDate',
       title: 'Requested Visit Date',
-      type: 'date',
-    }),
-    defineField({
-      name: 'suggestedTime',
-      title: 'Suggested Time',
       type: 'string',
+      description: 'The raw date text requested by the customer (e.g. "tomorrow", "24th Aug")',
     }),
+
     defineField({
       name: 'status',
       title: 'Status',

@@ -74,14 +74,23 @@ export default function LeadManagerClient({ initialLeads }: { initialLeads: any[
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      {lead.phoneNumber ? (
-                        <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700 bg-gray-100 px-2.5 py-1 rounded-md w-fit">
-                          <Phone className="w-3.5 h-3.5 text-gray-500" />
-                          {lead.phoneNumber}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400 italic">Pending...</span>
-                      )}
+                      <div className="flex flex-col gap-2">
+                        {lead.phoneNumber ? (
+                          <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700 bg-gray-100 px-2.5 py-1 rounded-md w-fit">
+                            <Phone className="w-3.5 h-3.5 text-gray-500" />
+                            {lead.phoneNumber}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">No Phone</span>
+                        )}
+                        
+                        {lead.visitDate && (
+                          <div className="flex items-center gap-1.5 text-sm font-medium text-blue-800 bg-blue-50 px-2.5 py-1 rounded-md w-fit">
+                            <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                            Requested: {lead.visitDate}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="py-4 px-4">
                       <span className="text-sm text-gray-600 bg-gray-50 border border-gray-100 px-2 py-1 rounded-md">
