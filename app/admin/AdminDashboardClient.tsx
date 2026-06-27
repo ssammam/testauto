@@ -69,6 +69,10 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
   const [textNodes, setTextNodes] = useState<TextNode[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
 
+  // Drag and Drop State
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
   // Initialize Default Layers
   useEffect(() => {
     if (initialRates) {
@@ -141,6 +145,81 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
   useEffect(() => {
     if (bgImage) drawCard();
   }, [bgImage, textNodes]);
+
+  // --- MOUSE DRAG EVENT HANDLERS ---
+  const getMousePos = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    let clientX, clientY;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
+    }
+
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!cardGenerated) return;
+    const { x, y } = getMousePos(e);
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx) return;
+
+    // Check hit in reverse order (grab top-most layer first)
+    for (let i = textNodes.length - 1; i >= 0; i--) {
+      const node = textNodes[i];
+      ctx.font = `bold ${node.fontSize}px Arial`;
+      const metrics = ctx.measureText(node.text);
+      const width = metrics.width;
+      const height = node.fontSize * 1.2; // Approximate height with padding
+
+      let boxX = node.x;
+      if (node.align === 'center') boxX = node.x - width / 2;
+      if (node.align === 'right') boxX = node.x - width;
+      const boxY = node.y - height + (node.fontSize * 0.2); // Adjust for baseline
+
+      const padding = 30; // generous hit box padding for mobile/mouse
+      if (
+        x >= boxX - padding &&
+        x <= boxX + width + padding &&
+        y >= boxY - padding &&
+        y <= boxY + height + padding
+      ) {
+        setDraggingNodeId(node.id);
+        setDragOffset({ x: x - node.x, y: y - node.y });
+        return; 
+      }
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!draggingNodeId) return;
+    e.preventDefault(); // Prevent scrolling on touch
+    const { x, y } = getMousePos(e);
+    
+    setTextNodes(prev => prev.map(node => {
+      if (node.id === draggingNodeId) {
+        return { ...node, x: Math.round(x - dragOffset.x), y: Math.round(y - dragOffset.y) };
+      }
+      return node;
+    }));
+  };
+
+  const handleMouseUp = () => {
+    setDraggingNodeId(null);
+  };
+  // ---------------------------------
 
   const downloadCard = () => {
     if (!canvasRef.current) return;
@@ -392,7 +471,17 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
 
         <div className="p-6 flex flex-col md:flex-row gap-8 items-center justify-center bg-gray-50/30">
           <div className="w-full max-w-sm aspect-[9/16] bg-gray-100 border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center overflow-hidden relative shadow-inner">
-            <canvas ref={canvasRef} className="w-full h-full object-contain absolute inset-0 z-10"></canvas>
+            <canvas 
+              ref={canvasRef} 
+              className={`w-full h-full object-contain absolute inset-0 z-10 ${cardGenerated ? (draggingNodeId ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleMouseDown}
+              onTouchMove={handleMouseMove}
+              onTouchEnd={handleMouseUp}
+            ></canvas>
             {!cardGenerated && (
               <div className="text-center p-6 text-gray-400 z-0">
                 <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
