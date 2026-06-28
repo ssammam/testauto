@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { syncInstagramPosts, updateProductReel } from './actions';
-import { RefreshCw, Camera, Save, CheckCircle2, Search, Calendar, Image as ImageIcon } from 'lucide-react';
+import { RefreshCw, Camera, Save, CheckCircle2, Search, Calendar, Image as ImageIcon, Instagram, Facebook } from 'lucide-react';
 
 export default function PostManagerClient({ initialPosts }: { initialPosts: any[] }) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -59,7 +59,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
             <Camera className="w-5 h-5 text-[#d62976]" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Instagram Posts & Pricing</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Social Media Posts & Pricing</h2>
             <p className="text-sm text-gray-500 mt-1">Manage pricing details for your Reels and Posts so auto-replies use the correct values.</p>
           </div>
         </div>
@@ -111,6 +111,20 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                       {new Date(post.publishedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </div>
                   )}
+
+                  {/* Platform Logos */}
+                  <div className="absolute bottom-3 right-3 flex gap-1.5">
+                    {(post.postedOn === 'instagram' || post.postedOn === 'both' || (!post.postedOn && post.reelId)) && (
+                      <div className="bg-white/90 backdrop-blur text-pink-600 p-1.5 rounded-full shadow-sm border border-white/20" title="Instagram Post">
+                        <Instagram className="w-4 h-4" />
+                      </div>
+                    )}
+                    {(post.postedOn === 'facebook' || post.postedOn === 'both' || (!post.postedOn && post.fbPostId)) && (
+                      <div className="bg-white/90 backdrop-blur text-blue-600 p-1.5 rounded-full shadow-sm border border-white/20" title="Facebook Post">
+                        <Facebook className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="h-32 w-full bg-gray-50 border-b border-gray-100 flex flex-col items-center justify-center text-gray-400">
