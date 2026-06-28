@@ -289,7 +289,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
       if (isOurPost) {
         dmMessage = "👋 Hey there! You've shared one of our pieces! 💛 However, the exact live price for this specific item hasn't been updated in our system yet.\n\nOur team is checking the details and will get back to you shortly, or you can leave your contact number here for immediate assistance!";
       } else {
-        dmMessage = "Hmm, it looks like the post or reel you shared isn't recognized, or it might be a random post from another page! 😅\n\nPlease make sure you are sharing one of our official products so we can assist you. If this is our product, our team will get back to you shortly! 💛";
+        dmMessage = "👋 We see you've shared a beautiful design that isn't from our collection!\n\nWe specialize in custom jewelry. Would you like us to craft a custom piece inspired by this design? 💛\n\nPlease share your phone number, and our design expert will contact you to discuss details and provide an estimate!";
       }
     } else {
       dmMessage = buildProductDmMessage(null, rates);
