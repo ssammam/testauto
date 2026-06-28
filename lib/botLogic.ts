@@ -103,12 +103,18 @@ export function buildProductDmMessage(product: any, rates: any): string {
 
 async function sendDM(recipient: { id: string } | { comment_id: string }, body: Record<string, unknown>, config: BotConfig) {
   const baseUrl = config.token.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
+  
+  const payload: any = { recipient, ...body };
+  if (config.platform === "facebook") {
+    payload.messaging_type = "RESPONSE";
+  }
+
   const res = await fetch(
     `${baseUrl}/v25.0/me/messages?access_token=${config.token}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ recipient, ...body }),
+      body: JSON.stringify(payload),
     }
   );
   if (!res.ok) {
@@ -238,8 +244,14 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     if (config.platform === "instagram" && (attachment.type === 'ig_post' || attachment.type === 'ig_reel' || attachment.type === 'share')) {
       sharedMediaId = attachment.payload?.ig_post_media_id || attachment.payload?.ig_reel_media_id || attachment.payload?.id;
     } else if (config.platform === "facebook" && (attachment.type === 'fallback' || attachment.type === 'share' || attachment.type === 'video' || attachment.type === 'post')) {
-      const fbPayloadId = attachment.payload?.id || attachment.payload?.url;
-      sharedMediaId = fbPayloadId ? String(fbPayloadId) : null;
+      let fbPayloadId = attachment.payload?.id || attachment.payload?.url;
+      if (fbPayloadId) {
+        fbPayloadId = String(fbPayloadId);
+        if (!fbPayloadId.includes("_") && !fbPayloadId.includes("http")) {
+          fbPayloadId = `${config.botId}_${fbPayloadId}`;
+        }
+      }
+      sharedMediaId = fbPayloadId || null;
     }
   }
 
@@ -295,10 +307,6 @@ export async function processComment(change: Record<string, any>, config: BotCon
   const commenterUsername = (value.from?.username || value.from?.name || "");
   const commentText = (value.text || value.message || "").toLowerCase();
   let mediaId = config.platform === "facebook" ? value.post_id : value.media?.id;
-  
-  if (config.platform === "facebook" && typeof mediaId === "string" && mediaId.includes("_")) {
-    mediaId = mediaId.split("_")[1];
-  }
   mediaId = mediaId ? String(mediaId) : null;
 
   if (value.from?.id === config.botId) return;
