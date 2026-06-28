@@ -67,6 +67,24 @@ export async function syncInstagramPosts() {
     const data = await res.json();
     const posts = data.data || [];
 
+    // --- NEW: Fetch Facebook Posts to detect cross-posting ---
+    let fbPosts: any[] = [];
+    try {
+      const fbToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+      const fbPageId = process.env.FACEBOOK_PAGE_ID;
+      if (fbToken && fbPageId) {
+        const fbUrl = `https://graph.facebook.com/v20.0/${fbPageId}/published_posts?fields=id,message,created_time&access_token=${fbToken}&limit=50`;
+        const fbRes = await fetch(fbUrl);
+        if (fbRes.ok) {
+          const fbData = await fbRes.json();
+          fbPosts = fbData.data || [];
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching FB posts for cross-post matching:", e);
+    }
+    // ---------------------------------
+
     // Fetch existing reels
     const existingReels = await writeClient.fetch(`*[_type == "productReel"]{reelId}`);
     const existingIds = new Set(existingReels.map((r: any) => r.reelId));
@@ -74,9 +92,31 @@ export async function syncInstagramPosts() {
     let addedCount = 0;
     for (const post of posts) {
       if (!existingIds.has(post.id)) {
+        
+        // Find matching FB post based on caption
+        let matchedFbPostId = undefined;
+        let postedOn = 'instagram';
+        
+        if (post.caption && fbPosts.length > 0) {
+          const igCaptionNormalized = post.caption.trim().toLowerCase();
+          const match = fbPosts.find((fbp: any) => {
+            if (!fbp.message) return false;
+            const fbMessageNormalized = fbp.message.trim().toLowerCase();
+            // Match if they are identical or one contains the other
+            return fbMessageNormalized === igCaptionNormalized || fbMessageNormalized.includes(igCaptionNormalized) || igCaptionNormalized.includes(fbMessageNormalized);
+          });
+          
+          if (match) {
+            matchedFbPostId = match.id;
+            postedOn = 'both';
+          }
+        }
+
         await writeClient.create({
           _type: 'productReel',
+          postedOn,
           reelId: post.id,
+          fbPostId: matchedFbPostId,
           name: 'Post ' + post.id.substring(0, 5),
           description: post.caption || '',
           materialType: 'gold22k', // default

@@ -2,7 +2,7 @@ import { defineField, defineType } from 'sanity'
 
 export const productReelType = defineType({
   name: 'productReel',
-  title: 'Instagram Reels / Products',
+  title: 'Social Media Posts / Products',
   type: 'document',
   fields: [
     defineField({
@@ -48,17 +48,45 @@ export const productReelType = defineType({
       },
     }),
     defineField({
-      name: 'reelId',
-      title: 'Instagram Reel ID',
+      name: 'postedOn',
+      title: 'Platform(s) Posted On',
       type: 'string',
-      description: 'The ID of the Instagram reel for this product (used by webhook).',
+      options: {
+        list: [
+          { title: 'Instagram and Facebook', value: 'both' },
+          { title: 'Instagram Only', value: 'instagram' },
+          { title: 'Facebook Only', value: 'facebook' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'both',
       validation: (rule) => rule.required(),
+    }),
+    defineField({
+      name: 'reelId',
+      title: 'Instagram Post/Reel ID',
+      type: 'string',
+      description: 'The ID of the Instagram reel or post (used by webhook).',
+      hidden: ({ document }) => document?.postedOn === 'facebook',
+      validation: (rule) => rule.custom((value, context) => {
+        if ((context.document?.postedOn === 'instagram' || context.document?.postedOn === 'both') && !value) {
+          return 'Instagram ID is required when posted on Instagram';
+        }
+        return true;
+      }),
     }),
     defineField({
       name: 'fbPostId',
       title: 'Facebook Post ID',
       type: 'string',
-      description: 'The ID of the Facebook post for this product (used by Facebook webhook).',
+      description: 'The ID of the Facebook post (used by Facebook webhook).',
+      hidden: ({ document }) => document?.postedOn === 'instagram',
+      validation: (rule) => rule.custom((value, context) => {
+        if ((context.document?.postedOn === 'facebook' || context.document?.postedOn === 'both') && !value) {
+          return 'Facebook Post ID is required when posted on Facebook';
+        }
+        return true;
+      }),
     }),
     defineField({
       name: 'description',
