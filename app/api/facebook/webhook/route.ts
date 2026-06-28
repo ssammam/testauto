@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
 ════════════════════════════════════════ */
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
+  console.log("INCOMING RAW BODY:", rawBody.substring(0, 500));
 
   const signature = req.headers.get("x-hub-signature-256");
   if (!verifyWebhookSignature(rawBody, signature)) {
