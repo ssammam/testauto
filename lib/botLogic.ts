@@ -106,7 +106,10 @@ async function sendDM(recipient: { id: string } | { comment_id: string }, body: 
   
   const payload: any = { recipient, ...body };
   if (config.platform === "facebook") {
-    payload.messaging_type = "RESPONSE";
+    // Private replies (using comment_id) do not use messaging_type
+    if (!("comment_id" in recipient)) {
+      payload.messaging_type = "RESPONSE";
+    }
   }
 
   const res = await fetch(
