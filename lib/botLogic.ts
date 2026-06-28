@@ -124,8 +124,9 @@ async function replyToComment(commentId: string, message: string, config: BotCon
   params.append("message", message);
   params.append("access_token", config.token);
 
+  const edge = config.platform === "instagram" ? "replies" : "comments";
   const res = await fetch(
-    `${baseUrl}/v25.0/${commentId}/replies`,
+    `${baseUrl}/v25.0/${commentId}/${edge}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
