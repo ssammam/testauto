@@ -246,8 +246,8 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
   const hasAttachment = event.message?.attachments && event.message.attachments.length > 0;
   if (hasAttachment) {
     const attachment = event.message.attachments[0];
-    if (config.platform === "instagram" && (attachment.type === 'ig_post' || attachment.type === 'ig_reel' || attachment.type === 'share')) {
-      sharedMediaId = attachment.payload?.ig_post_media_id || attachment.payload?.ig_reel_media_id || attachment.payload?.id;
+    if (config.platform === "instagram" && (attachment.type === 'ig_post' || attachment.type === 'ig_reel' || attachment.type === 'share' || attachment.type === 'story_share')) {
+      sharedMediaId = attachment.payload?.ig_post_media_id || attachment.payload?.ig_reel_media_id || attachment.payload?.share_id || attachment.payload?.id || attachment.payload?.url;
     } else if (config.platform === "facebook" && (attachment.type === 'fallback' || attachment.type === 'share' || attachment.type === 'video' || attachment.type === 'post')) {
       let fbPayloadId = attachment.payload?.id || attachment.payload?.url;
       if (fbPayloadId) {
