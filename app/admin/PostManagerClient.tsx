@@ -2,7 +2,21 @@
 
 import { useState } from 'react';
 import { syncInstagramPosts, updateProductReel } from './actions';
-import { RefreshCw, Camera, Save, CheckCircle2, Search, Calendar, Image as ImageIcon, Instagram, Facebook } from 'lucide-react';
+import { RefreshCw, Camera, Save, CheckCircle2, Search, Calendar, Image as ImageIcon } from 'lucide-react';
+
+const InstagramIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+  </svg>
+);
+
+const FacebookIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+  </svg>
+);
 
 export default function PostManagerClient({ initialPosts }: { initialPosts: any[] }) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -116,12 +130,12 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                   <div className="absolute bottom-3 right-3 flex gap-1.5">
                     {(post.postedOn === 'instagram' || post.postedOn === 'both' || (!post.postedOn && post.reelId)) && (
                       <div className="bg-white/90 backdrop-blur text-pink-600 p-1.5 rounded-full shadow-sm border border-white/20" title="Instagram Post">
-                        <Instagram className="w-4 h-4" />
+                        <InstagramIcon className="w-4 h-4" />
                       </div>
                     )}
                     {(post.postedOn === 'facebook' || post.postedOn === 'both' || (!post.postedOn && post.fbPostId)) && (
                       <div className="bg-white/90 backdrop-blur text-blue-600 p-1.5 rounded-full shadow-sm border border-white/20" title="Facebook Post">
-                        <Facebook className="w-4 h-4" />
+                        <FacebookIcon className="w-4 h-4" />
                       </div>
                     )}
                   </div>
