@@ -61,7 +61,11 @@ export async function POST(req: NextRequest) {
 
   let body: Record<string, any>;
   try {
-    body = JSON.parse(rawBody);
+    // Facebook sends large 18-digit IDs as unquoted numbers in some payloads (e.g. attachment.payload.id).
+    // Native JSON.parse rounds numbers > 16 digits, destroying the exact ID.
+    // This regex wraps any number >= 16 digits in quotes before parsing so it becomes a string.
+    const safeRawBody = rawBody.replace(/:\s*(-?\d{16,})(?=[,\}\]])/g, ': "$1"');
+    body = JSON.parse(safeRawBody);
   } catch {
     return new NextResponse("Bad Request", { status: 400 });
   }
