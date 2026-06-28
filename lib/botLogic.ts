@@ -44,7 +44,8 @@ async function getProduct(mediaId: string) {
       return cached.data;
     }
   }
-  const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId)][0]`, { mediaId });
+  const cleanMediaId = mediaId.includes('_') ? mediaId.split('_')[1] : mediaId;
+  const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId || reelId == $cleanMediaId || fbPostId == $cleanMediaId)][0]`, { mediaId, cleanMediaId });
   productCache.set(mediaId, { data: product, expiresAt: Date.now() + CACHE_TTL_MS });
   return product;
 }
@@ -248,8 +249,8 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     const attachment = event.message.attachments[0];
     if (config.platform === "instagram" && (attachment.type === 'ig_post' || attachment.type === 'ig_reel' || attachment.type === 'share' || attachment.type === 'story_share')) {
       sharedMediaId = attachment.payload?.ig_post_media_id || attachment.payload?.ig_reel_media_id || attachment.payload?.share_id || attachment.payload?.id || attachment.payload?.url;
-    } else if (config.platform === "facebook" && (attachment.type === 'fallback' || attachment.type === 'share' || attachment.type === 'video' || attachment.type === 'post')) {
-      let fbPayloadId = attachment.payload?.id || attachment.payload?.url;
+    } else if (config.platform === "facebook" && (attachment.type === 'fallback' || attachment.type === 'share' || attachment.type === 'video' || attachment.type === 'post' || attachment.type === 'reel' || attachment.type === 'ig_reel')) {
+      let fbPayloadId = attachment.payload?.video_id || attachment.payload?.reel_id || attachment.payload?.id || attachment.payload?.url;
       if (fbPayloadId) {
         fbPayloadId = String(fbPayloadId);
         if (!fbPayloadId.includes("_") && !fbPayloadId.includes("http")) {
@@ -318,7 +319,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
   const commentId = config.platform === "facebook" ? value.comment_id : value.id;
   const commenterUsername = (value.from?.username || value.from?.name || "");
   const commentText = (value.text || value.message || "").toLowerCase();
-  let mediaId = config.platform === "facebook" ? value.post_id : value.media?.id;
+  let mediaId = config.platform === "facebook" ? (value.post_id || value.video_id) : value.media?.id;
   mediaId = mediaId ? String(mediaId) : null;
 
   if (value.from?.id === config.botId) return;
