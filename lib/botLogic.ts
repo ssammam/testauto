@@ -49,7 +49,7 @@ async function getProduct(mediaId: string) {
   return product;
 }
 
-export function buildProductDmMessage(product: any, rates: any, isEstimate: boolean = false): string {
+export function buildProductDmMessage(product: any, rates: any): string {
   if (product) {
     if (product.status === 'sold') {
       return "✨ This beautiful piece has already been sold! Please DM us to check for similar designs or to place a custom order. 💛";
@@ -161,12 +161,13 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
 
   console.log(`[${config.platform} handleDM] Received message from ${senderId}: "${rawMessageText}"`);
 
+  const baseUrl = config.token.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
+
   // Get sender profile (with caching to prevent Meta API rate limits)
   let profile: any = {};
   if (profileCache.has(senderId) && profileCache.get(senderId)!.expiresAt > Date.now()) {
     profile = profileCache.get(senderId)!.data;
   } else {
-    const baseUrl = config.token.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
     const fields = config.platform === "facebook" ? "username,name,first_name" : "username,name";
     try {
       const profileRes = await fetch(`${baseUrl}/v25.0/${senderId}?fields=${fields}&access_token=${config.token}`);
@@ -259,7 +260,9 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
         try {
           const mediaRes = await fetch(`${baseUrl}/v25.0/${mediaId}?access_token=${config.token}`);
           if (mediaRes.ok) isOurPost = true;
-        } catch (e) {}
+        } catch {
+          // ignore error
+        }
       } else if (config.platform === "facebook") {
           isOurPost = true; // Assume FB attachment is our post for now to prompt fallback
       }
