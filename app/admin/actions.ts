@@ -86,7 +86,7 @@ export async function syncInstagramPosts() {
     // ---------------------------------
 
     // Fetch existing reels
-    const existingReels = await writeClient.fetch(`*[_type == "productReel"]{_id, reelId, fbPostId, postedOn}`);
+    const existingReels = await writeClient.fetch(`*[_type == "productReel"]{_id, reelId, fbPostId, postedOn, description}`);
     const existingIgIds = new Map(existingReels.filter((r: any) => r.reelId).map((r: any) => [r.reelId, r]));
     const existingFbIds = new Map(existingReels.filter((r: any) => r.fbPostId).map((r: any) => [r.fbPostId, r]));
 
@@ -162,23 +162,43 @@ export async function syncInstagramPosts() {
     // Process remaining Facebook Posts (those that didn't match any IG post)
     for (const fbPost of fbPosts) {
       if (!existingFbIds.has(fbPost.id)) {
-        await writeClient.create({
-          _type: 'productReel',
-          postedOn: 'facebook',
-          fbPostId: fbPost.id,
-          name: 'FB Post ' + fbPost.id.substring(0, 5),
-          description: fbPost.message || '',
-          materialType: 'gold22k', // default
-          weightGrams: 0,
-          makingChargeType: 'percentage',
-          makingCharges: 0,
-          thumbnailUrl: fbPost.full_picture || '',
-          publishedAt: fbPost.created_time || new Date().toISOString(),
-          status: 'active',
-          isPriceLocked: false,
-        });
-        addedCount++;
-        existingFbIds.set(fbPost.id, { _id: 'new', fbPostId: fbPost.id, postedOn: 'facebook' });
+        let matchedExistingDoc = null;
+        if (fbPost.message) {
+          const fbMessageNormalized = fbPost.message.trim().toLowerCase();
+          matchedExistingDoc = existingReels.find((r: any) => {
+            if (!r.description) return false;
+            const rDesc = r.description.trim().toLowerCase();
+            return fbMessageNormalized === rDesc || fbMessageNormalized.includes(rDesc) || rDesc.includes(fbMessageNormalized);
+          });
+        }
+
+        if (matchedExistingDoc) {
+          // Update the existing document to link the Facebook post
+          await writeClient.patch(matchedExistingDoc._id).set({
+            fbPostId: fbPost.id,
+            postedOn: 'both'
+          }).commit();
+          existingFbIds.set(fbPost.id, { _id: matchedExistingDoc._id, fbPostId: fbPost.id, postedOn: 'both' });
+        } else {
+          // No match found, create a new document
+          await writeClient.create({
+            _type: 'productReel',
+            postedOn: 'facebook',
+            fbPostId: fbPost.id,
+            name: 'FB Post ' + fbPost.id.substring(0, 5),
+            description: fbPost.message || '',
+            materialType: 'gold22k', // default
+            weightGrams: 0,
+            makingChargeType: 'percentage',
+            makingCharges: 0,
+            thumbnailUrl: fbPost.full_picture || '',
+            publishedAt: fbPost.created_time || new Date().toISOString(),
+            status: 'active',
+            isPriceLocked: false,
+          });
+          addedCount++;
+          existingFbIds.set(fbPost.id, { _id: 'new', fbPostId: fbPost.id, postedOn: 'facebook' });
+        }
       }
     }
 
