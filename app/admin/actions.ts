@@ -73,7 +73,7 @@ export async function syncInstagramPosts() {
       const fbToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
       const fbPageId = process.env.FACEBOOK_PAGE_ID;
       if (fbToken && fbPageId) {
-        const fbUrl = `https://graph.facebook.com/v20.0/${fbPageId}/published_posts?fields=id,message,created_time,full_picture&access_token=${fbToken}&limit=50`;
+        const fbUrl = `https://graph.facebook.com/v20.0/${fbPageId}/posts?fields=id,message,created_time,full_picture&access_token=${fbToken}&limit=50`;
         const fbRes = await fetch(fbUrl);
         if (fbRes.ok) {
           const fbData = await fbRes.json();
