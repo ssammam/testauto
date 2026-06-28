@@ -275,15 +275,22 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
       dmMessage = buildProductDmMessage(product, rates);
     } else if (mediaId || hasAttachment) {
       let isOurPost = false;
-      if (mediaId && config.platform === "instagram") {
-        try {
-          const mediaRes = await fetch(`${baseUrl}/v25.0/${mediaId}?access_token=${config.token}`);
-          if (mediaRes.ok) isOurPost = true;
-        } catch {
-          // ignore error
+      if (mediaId) {
+        if (mediaId.startsWith("http")) {
+          isOurPost = false;
+        } else {
+          try {
+            const mediaRes = await fetch(`${baseUrl}/v25.0/${mediaId}?access_token=${config.token}`);
+            if (mediaRes.ok) {
+              const mediaData = await mediaRes.json();
+              if (!mediaData.error) {
+                isOurPost = true;
+              }
+            }
+          } catch {
+            // ignore error
+          }
         }
-      } else if (config.platform === "facebook") {
-          isOurPost = true; // Assume FB attachment is our post for now to prompt fallback
       }
 
       if (isOurPost) {
