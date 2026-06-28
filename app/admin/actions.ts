@@ -65,7 +65,7 @@ export async function syncInstagramPosts() {
     }
 
     const data = await res.json();
-    const posts = data.data || [];
+    const igPosts = data.data || [];
 
     // --- NEW: Fetch Facebook Posts to detect cross-posting ---
     let fbPosts: any[] = [];
@@ -73,7 +73,7 @@ export async function syncInstagramPosts() {
       const fbToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
       const fbPageId = process.env.FACEBOOK_PAGE_ID;
       if (fbToken && fbPageId) {
-        const fbUrl = `https://graph.facebook.com/v20.0/${fbPageId}/published_posts?fields=id,message,created_time&access_token=${fbToken}&limit=50`;
+        const fbUrl = `https://graph.facebook.com/v20.0/${fbPageId}/published_posts?fields=id,message,created_time,full_picture&access_token=${fbToken}&limit=50`;
         const fbRes = await fetch(fbUrl);
         if (fbRes.ok) {
           const fbData = await fbRes.json();
@@ -86,13 +86,15 @@ export async function syncInstagramPosts() {
     // ---------------------------------
 
     // Fetch existing reels
-    const existingReels = await writeClient.fetch(`*[_type == "productReel"]{reelId}`);
-    const existingIds = new Set(existingReels.map((r: any) => r.reelId));
+    const existingReels = await writeClient.fetch(`*[_type == "productReel"]{_id, reelId, fbPostId, postedOn}`);
+    const existingIgIds = new Map(existingReels.filter((r: any) => r.reelId).map((r: any) => [r.reelId, r]));
+    const existingFbIds = new Map(existingReels.filter((r: any) => r.fbPostId).map((r: any) => [r.fbPostId, r]));
 
     let addedCount = 0;
-    for (const post of posts) {
-      if (!existingIds.has(post.id)) {
-        
+    
+    // Process Instagram Posts
+    for (const post of igPosts) {
+      if (!existingIgIds.has(post.id)) {
         // Find matching FB post based on caption
         let matchedFbPostId = undefined;
         let postedOn = 'instagram';
@@ -102,7 +104,6 @@ export async function syncInstagramPosts() {
           const match = fbPosts.find((fbp: any) => {
             if (!fbp.message) return false;
             const fbMessageNormalized = fbp.message.trim().toLowerCase();
-            // Match if they are identical or one contains the other
             return fbMessageNormalized === igCaptionNormalized || fbMessageNormalized.includes(igCaptionNormalized) || igCaptionNormalized.includes(fbMessageNormalized);
           });
           
@@ -129,6 +130,55 @@ export async function syncInstagramPosts() {
           isPriceLocked: false,
         });
         addedCount++;
+        
+        existingIgIds.set(post.id, { _id: 'new', reelId: post.id, fbPostId: matchedFbPostId, postedOn });
+        if (matchedFbPostId) {
+          existingFbIds.set(matchedFbPostId, { _id: 'new', reelId: post.id, fbPostId: matchedFbPostId, postedOn });
+        }
+      } else {
+        // Post exists, try to backfill fbPostId if missing
+        const existing: any = existingIgIds.get(post.id);
+        if (!existing.fbPostId && post.caption && fbPosts.length > 0) {
+          const igCaptionNormalized = post.caption.trim().toLowerCase();
+          const match = fbPosts.find((fbp: any) => {
+            if (!fbp.message) return false;
+            const fbMessageNormalized = fbp.message.trim().toLowerCase();
+            return fbMessageNormalized === igCaptionNormalized || fbMessageNormalized.includes(igCaptionNormalized) || igCaptionNormalized.includes(fbMessageNormalized);
+          });
+          
+          if (match && !existingFbIds.has(match.id)) {
+            // Found a match for an old post! Update it.
+            await writeClient.patch(existing._id).set({
+              fbPostId: match.id,
+              postedOn: 'both'
+            }).commit();
+            existingFbIds.set(match.id, { _id: existing._id, reelId: post.id, fbPostId: match.id, postedOn: 'both' });
+            // Not counting this as an "added" post since it was just updated
+          }
+        }
+      }
+    }
+    
+    // Process remaining Facebook Posts (those that didn't match any IG post)
+    for (const fbPost of fbPosts) {
+      if (!existingFbIds.has(fbPost.id)) {
+        await writeClient.create({
+          _type: 'productReel',
+          postedOn: 'facebook',
+          fbPostId: fbPost.id,
+          name: 'FB Post ' + fbPost.id.substring(0, 5),
+          description: fbPost.message || '',
+          materialType: 'gold22k', // default
+          weightGrams: 0,
+          makingChargeType: 'percentage',
+          makingCharges: 0,
+          thumbnailUrl: fbPost.full_picture || '',
+          publishedAt: fbPost.created_time || new Date().toISOString(),
+          status: 'active',
+          isPriceLocked: false,
+        });
+        addedCount++;
+        existingFbIds.set(fbPost.id, { _id: 'new', fbPostId: fbPost.id, postedOn: 'facebook' });
       }
     }
 
