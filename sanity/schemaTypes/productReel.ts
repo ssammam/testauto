@@ -55,6 +55,12 @@ export const productReelType = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
+      name: 'fbPostId',
+      title: 'Facebook Post ID',
+      type: 'string',
+      description: 'The ID of the Facebook post for this product (used by Facebook webhook).',
+    }),
+    defineField({
       name: 'description',
       title: 'Post Description',
       type: 'text',

@@ -44,7 +44,7 @@ async function getProduct(mediaId: string) {
       return cached.data;
     }
   }
-  const product = await client.fetch(`*[_type == "productReel" && reelId == $mediaId][0]`, { mediaId });
+  const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId)][0]`, { mediaId });
   productCache.set(mediaId, { data: product, expiresAt: Date.now() + CACHE_TTL_MS });
   return product;
 }
