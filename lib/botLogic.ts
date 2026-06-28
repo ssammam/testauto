@@ -237,8 +237,8 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     const attachment = event.message.attachments[0];
     if (config.platform === "instagram" && (attachment.type === 'ig_post' || attachment.type === 'ig_reel' || attachment.type === 'share')) {
       sharedMediaId = attachment.payload?.ig_post_media_id || attachment.payload?.ig_reel_media_id || attachment.payload?.id;
-    } else if (config.platform === "facebook" && (attachment.type === 'fallback' || attachment.type === 'share' || attachment.type === 'video')) {
-      sharedMediaId = attachment.payload?.url || attachment.payload?.id;
+    } else if (config.platform === "facebook" && (attachment.type === 'fallback' || attachment.type === 'share' || attachment.type === 'video' || attachment.type === 'post')) {
+      sharedMediaId = attachment.payload?.id || attachment.payload?.url;
     }
   }
 
