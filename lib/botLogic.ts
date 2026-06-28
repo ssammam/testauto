@@ -193,11 +193,13 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
   const name: string = profile.first_name || profile.name || profile.username || "there";
   const username: string = profile.username || profile.name || senderId;
 
-  // 1. GREETING
+  // 1. GREETING (Commented out to let Meta Business Suite handle auto-replies during App Review)
+  /*
   if (messageText === "hello" || messageText === "hi" || messageText === "hey") {
     await dmText(senderId, `👋 Hi ${name}! Are you looking for Gold or Silver? What can we help you with?`, config);
     return;
   }
+  */
 
   // 2. DETECT BOOKING INTENT
   if (messageText.includes("visit") || messageText.includes("tomorrow") || messageText.includes("today") || messageText.includes("book")) {
