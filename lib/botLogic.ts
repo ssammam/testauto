@@ -238,7 +238,8 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     if (config.platform === "instagram" && (attachment.type === 'ig_post' || attachment.type === 'ig_reel' || attachment.type === 'share')) {
       sharedMediaId = attachment.payload?.ig_post_media_id || attachment.payload?.ig_reel_media_id || attachment.payload?.id;
     } else if (config.platform === "facebook" && (attachment.type === 'fallback' || attachment.type === 'share' || attachment.type === 'video' || attachment.type === 'post')) {
-      sharedMediaId = attachment.payload?.id || attachment.payload?.url;
+      const fbPayloadId = attachment.payload?.id || attachment.payload?.url;
+      sharedMediaId = fbPayloadId ? String(fbPayloadId) : null;
     }
   }
 
@@ -293,7 +294,12 @@ export async function processComment(change: Record<string, any>, config: BotCon
   const commentId = config.platform === "facebook" ? value.comment_id : value.id;
   const commenterUsername = (value.from?.username || value.from?.name || "");
   const commentText = (value.text || value.message || "").toLowerCase();
-  const mediaId = config.platform === "facebook" ? value.post_id : value.media?.id;
+  let mediaId = config.platform === "facebook" ? value.post_id : value.media?.id;
+  
+  if (config.platform === "facebook" && typeof mediaId === "string" && mediaId.includes("_")) {
+    mediaId = mediaId.split("_")[1];
+  }
+  mediaId = mediaId ? String(mediaId) : null;
 
   if (value.from?.id === config.botId) return;
 
