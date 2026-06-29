@@ -86,7 +86,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
               placeholder="Search posts..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#d62976]/20 focus:border-[#d62976] w-64"
+              className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#d62976]/20 focus:border-[#d62976] w-64"
             />
           </div>
           {syncMessage && (
@@ -166,18 +166,18 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Product Name</label>
-                      <input name="name" defaultValue={post.name} required className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
+                      <input name="name" defaultValue={post.name} required className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">SKU</label>
-                      <input name="sku" defaultValue={post.sku} placeholder="e.g. VG-ER-2034" className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
+                      <input name="sku" defaultValue={post.sku} placeholder="e.g. VG-ER-2034" className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                      <select name="status" defaultValue={post.status || 'active'} className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
+                      <select name="status" defaultValue={post.status || 'active'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
                         <option value="active">🟢 Active</option>
                         <option value="draft">🟡 Draft</option>
                         <option value="sold">🔴 Sold Out</option>
@@ -186,7 +186,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
-                      <select name="category" defaultValue={post.category || 'rings'} className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
+                      <select name="category" defaultValue={post.category || 'rings'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
                         <option value="rings">Rings</option>
                         <option value="chains">Chains</option>
                         <option value="bangles">Bangles</option>
@@ -202,12 +202,12 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
 
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Description (Internal)</label>
-                    <textarea name="description" defaultValue={post.description} className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46] min-h-[40px]" />
+                    <textarea name="description" defaultValue={post.description} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46] min-h-[40px]" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Material</label>
-                      <select name="materialType" defaultValue={post.materialType} className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
+                      <select name="materialType" defaultValue={post.materialType} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
                         <option value="gold18k">18K Gold</option>
                         <option value="gold22k">22K Gold</option>
                         <option value="gold24k">24K Gold</option>
@@ -216,7 +216,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Weight (g)</label>
-                      <input name="weightGrams" type="number" step="0.01" defaultValue={post.weightGrams} required className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
+                      <input name="weightGrams" type="number" step="0.01" defaultValue={post.weightGrams} required className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 p-3 bg-white rounded-lg border border-gray-200">
@@ -226,12 +226,12 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Locked Price (₹)</label>
-                      <input name="lockedPrice" type="number" defaultValue={post.lockedPrice} className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="e.g. 145000" />
+                      <input name="lockedPrice" type="number" defaultValue={post.lockedPrice} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="e.g. 145000" />
                     </div>
                     <div className="col-span-2 grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">Making Charge Type</label>
-                        <select name="makingChargeType" defaultValue={post.makingChargeType || 'percentage'} className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
+                        <select name="makingChargeType" defaultValue={post.makingChargeType || 'percentage'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
                           <option value="percentage">Percentage (%)</option>
                           <option value="flat">Flat Amount (₹)</option>
                           <option value="per_gram">Per Gram (₹/g)</option>
@@ -239,14 +239,32 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">Making Charges Value</label>
-                        <input name="makingCharges" type="number" step="0.01" defaultValue={post.makingCharges} className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="e.g. 15 for 15%" />
+                        <input name="makingCharges" type="number" step="0.01" defaultValue={post.makingCharges} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="e.g. 15 for 15%" />
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Price Response Type</label>
+                      <select name="priceCalculationType" defaultValue={post.priceCalculationType || 'normal'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
+                        <option value="normal">Normal Calculation</option>
+                        <option value="range">Range Price</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Range Category</label>
+                      <select name="rangeCategory" defaultValue={post.rangeCategory || 'rings'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
+                        <option value="rings">Rings</option>
+                        <option value="bracelets">Bracelets / Bangles</option>
+                        <option value="long_chains">Long Chains</option>
+                      </select>
                     </div>
                   </div>
                   
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Private Notes</label>
-                    <textarea name="notes" defaultValue={post.notes} placeholder="e.g. Max discount 4%" className="w-full text-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46] min-h-[40px] bg-yellow-50/50" />
+                    <textarea name="notes" defaultValue={post.notes} placeholder="e.g. Max discount 4%" className="w-full text-sm text-gray-900 border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46] min-h-[40px] bg-yellow-50" />
                   </div>
                   
                   <div className="flex gap-2 pt-2">
@@ -350,6 +368,13 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
               <div className="bg-white border rounded-xl p-4 shadow-sm text-sm text-gray-800 whitespace-pre-wrap font-sans">
                 {previewPost.status === 'sold' ? (
                   "✨ This beautiful piece has already been sold! Please DM us to check for similar designs or to place a custom order. 💛"
+                ) : previewPost.priceCalculationType === 'range' ? (
+                  `Namaste, First Name,\n\nThank you for your interest in our jewellery collection!\n\nMaking Charges: 0%\nWastage:10%\n\nStarting Price Range\n${
+                    previewPost.rangeCategory === 'rings' ? "Rings: ₹5,000 onwards" :
+                    previewPost.rangeCategory === 'bracelets' ? "Bracelets: ₹25,00 onwards" :
+                    previewPost.rangeCategory === 'long_chains' ? "Long Chains: ₹25,00 onwards" :
+                    "Rings: ₹5,000 onwards\nBracelets: ₹25,00 onwards\nLong Chains: ₹25,00 onwards"
+                  }\n\n✅ BIS Hallmarked & Certified\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that product.\n\n⚠️ Disclaimer:\nFinal price is based on the billing date's gold rate & ornament weight.`
                 ) : (
                   <>
                     ✨ {previewPost.name}

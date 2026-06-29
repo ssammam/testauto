@@ -229,6 +229,8 @@ export async function updateProductReel(id: string, formData: FormData) {
     const isPriceLocked = formData.get('isPriceLocked') === 'true';
     const lockedPrice = parseFloat(formData.get('lockedPrice') as string) || 0;
     const notes = formData.get('notes') as string;
+    const priceCalculationType = formData.get('priceCalculationType') as string;
+    const rangeCategory = formData.get('rangeCategory') as string;
 
     await writeClient.patch(id).set({
       name,
@@ -242,7 +244,9 @@ export async function updateProductReel(id: string, formData: FormData) {
       sku,
       isPriceLocked,
       lockedPrice,
-      notes
+      notes,
+      priceCalculationType,
+      rangeCategory
     }).commit();
 
     revalidatePath('/admin');
