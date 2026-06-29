@@ -37,7 +37,7 @@ async function getRates() {
   return rates;
 }
 
-async function getProduct(mediaId: string) {
+async function getProduct(mediaId: string, title: string | null = null) {
   if (productCache.has(mediaId)) {
     const cached = productCache.get(mediaId)!;
     if (cached.expiresAt > Date.now()) {
@@ -61,7 +61,7 @@ async function getProduct(mediaId: string) {
      }
   }
 
-  const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId || reelId == $cleanMediaId || fbPostId == $cleanMediaId || sku match $mediaId || sku match $cleanMediaId || (shortcode != null && shortcode == $shortcode) || (fbPostId != null && fbPostId match $fbExtractedId))][0]`, { mediaId, cleanMediaId, shortcode: shortcode || '', fbExtractedId: fbExtractedId || '' });
+  const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId || reelId == $cleanMediaId || fbPostId == $cleanMediaId || sku match $mediaId || sku match $cleanMediaId || (shortcode != null && shortcode == $shortcode) || (fbPostId != null && fbPostId match $fbExtractedId) || (description != null && $title != null && description match $title))][0]`, { mediaId, cleanMediaId, shortcode: shortcode || '', fbExtractedId: fbExtractedId || '', title: title || '' });
   productCache.set(mediaId, { data: product, expiresAt: Date.now() + CACHE_TTL_MS });
   return product;
 }
@@ -275,6 +275,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
   // 5. PRICE CHECK
   const replyToStory = event.message?.reply_to?.story;
   let sharedMediaId = null;
+  let fbTitleFallback = null;
   const hasAttachment = event.message?.attachments && event.message.attachments.length > 0;
   if (hasAttachment) {
     const attachment = event.message.attachments[0];
@@ -282,6 +283,8 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
       sharedMediaId = attachment.payload?.ig_post_media_id || attachment.payload?.ig_reel_media_id || attachment.payload?.share_id || attachment.payload?.id || attachment.payload?.url;
     } else if (config.platform === "facebook" && (attachment.type === 'fallback' || attachment.type === 'share' || attachment.type === 'video' || attachment.type === 'post' || attachment.type === 'reel' || attachment.type === 'ig_reel')) {
       let fbPayloadId = attachment.payload?.video_id || attachment.payload?.reel_video_id || attachment.payload?.post_id || attachment.payload?.reel_id || attachment.payload?.id || attachment.payload?.url;
+      if (attachment.payload?.title) fbTitleFallback = attachment.payload.title;
+      
       if (fbPayloadId) {
         fbPayloadId = String(fbPayloadId);
         if (!fbPayloadId.includes("_") && !fbPayloadId.includes("http")) {
@@ -297,7 +300,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
   if (messageText.includes("price") || mediaId) {
     let product = null;
     if (mediaId) {
-      product = await getProduct(mediaId);
+      product = await getProduct(mediaId, fbTitleFallback);
     }
 
     const rates = await getRates();

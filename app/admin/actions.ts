@@ -79,6 +79,21 @@ export async function syncInstagramPosts() {
           const fbData = await fbRes.json();
           fbPosts = fbData.data || [];
         }
+
+        const fbReelsUrl = `https://graph.facebook.com/v20.0/${fbPageId}/video_reels?fields=id,description,created_time,picture&access_token=${fbToken}&limit=50`;
+        const fbReelsRes = await fetch(fbReelsUrl);
+        if (fbReelsRes.ok) {
+          const fbReelsData = await fbReelsRes.json();
+          if (fbReelsData.data) {
+             const mappedReels = fbReelsData.data.map((r: any) => ({
+                 id: r.id, // Usually just the reel ID, not PAGEID_REELID
+                 message: r.description,
+                 created_time: r.created_time,
+                 full_picture: r.picture
+             }));
+             fbPosts = [...fbPosts, ...mappedReels];
+          }
+        }
       }
     } catch (e) {
       console.error("Error fetching FB posts for cross-post matching:", e);
