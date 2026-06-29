@@ -50,9 +50,14 @@ async function getProduct(mediaId: string) {
 
   let fbExtractedId = null;
   if (mediaId.includes('facebook.com') || mediaId.includes('fb.watch') || mediaId.includes('fb.com')) {
-     const fbMatch = mediaId.match(/\d{10,}/);
-     if (fbMatch) {
-       fbExtractedId = fbMatch[0];
+     const pfbidMatch = mediaId.match(/pfbid[a-zA-Z0-9]+/);
+     if (pfbidMatch) {
+       fbExtractedId = pfbidMatch[0];
+     } else {
+       const fbMatch = mediaId.match(/\d{10,}/);
+       if (fbMatch) {
+         fbExtractedId = fbMatch[0];
+       }
      }
   }
 
@@ -276,7 +281,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     if (config.platform === "instagram" && (attachment.type === 'ig_post' || attachment.type === 'ig_reel' || attachment.type === 'share' || attachment.type === 'story_share')) {
       sharedMediaId = attachment.payload?.ig_post_media_id || attachment.payload?.ig_reel_media_id || attachment.payload?.share_id || attachment.payload?.id || attachment.payload?.url;
     } else if (config.platform === "facebook" && (attachment.type === 'fallback' || attachment.type === 'share' || attachment.type === 'video' || attachment.type === 'post' || attachment.type === 'reel' || attachment.type === 'ig_reel')) {
-      let fbPayloadId = attachment.payload?.video_id || attachment.payload?.reel_id || attachment.payload?.id || attachment.payload?.url;
+      let fbPayloadId = attachment.payload?.video_id || attachment.payload?.reel_video_id || attachment.payload?.post_id || attachment.payload?.reel_id || attachment.payload?.id || attachment.payload?.url;
       if (fbPayloadId) {
         fbPayloadId = String(fbPayloadId);
         if (!fbPayloadId.includes("_") && !fbPayloadId.includes("http")) {
