@@ -1,7 +1,7 @@
 import { client, writeClient } from "@/sanity/lib/client";
 
 export interface BotConfig {
-  platform: "instagram" | "facebook";
+  platform: "instagram" | "facebook" | "whatsapp";
   token: string;
   botId: string;
 }
@@ -45,7 +45,7 @@ async function getProduct(mediaId: string) {
     }
   }
   const cleanMediaId = mediaId.includes('_') ? mediaId.split('_')[1] : mediaId;
-  const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId || reelId == $cleanMediaId || fbPostId == $cleanMediaId)][0]`, { mediaId, cleanMediaId });
+  const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId || reelId == $cleanMediaId || fbPostId == $cleanMediaId || sku match $mediaId || sku match $cleanMediaId)][0]`, { mediaId, cleanMediaId });
   productCache.set(mediaId, { data: product, expiresAt: Date.now() + CACHE_TTL_MS });
   return product;
 }
@@ -376,6 +376,128 @@ export async function processComment(change: Record<string, any>, config: BotCon
         console.error(`[${config.platform} handleComment] Location DM to commenter skipped:`, err);
       }
     }
+    return;
+  }
+}
+
+async function sendWhatsAppMessage(to: string, text: string, config: BotConfig) {
+  const res = await fetch(
+    `https://graph.facebook.com/v20.0/${config.botId}/messages`,
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${config.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: to,
+        type: "text",
+        text: { preview_url: false, body: text }
+      }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    console.error(`[WhatsApp] DM send error:`, JSON.stringify(err));
+  }
+}
+
+export async function processWhatsAppMessage(message: any, contacts: any[], config: BotConfig) {
+  const senderId = message.from; // WhatsApp phone number
+  if (!senderId) return;
+
+  const rawMessageText = message.type === 'text' ? (message.text?.body || "").trim() : "";
+  const messageText = rawMessageText.toLowerCase();
+
+  // ANTI-LOOP
+  if (messageText.includes("estimated price") || messageText.includes("our team gets back to you") || messageText.includes("what can we help you with")) {
+    return;
+  }
+
+  console.log(`[WhatsApp handleMessage] Received message from ${senderId}: "${rawMessageText}"`);
+
+  // Extract name from contacts if available
+  const contact = contacts.find((c: any) => c.wa_id === senderId);
+  const name = contact?.profile?.name || "there";
+  const username = senderId; // Phone number acts as username for WhatsApp leads
+
+  // 2. DETECT BOOKING INTENT
+  if (messageText.includes("visit") || messageText.includes("tomorrow") || messageText.includes("today") || messageText.includes("book")) {
+    await sendWhatsAppMessage(senderId, "🗓️ Would you like to schedule a visit? Please provide a date and confirm your phone number so our team can get ready for you!", config);
+    await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'General', status: 'New', reportedInDailyEmail: false });
+    return;
+  }
+
+  // 2.5 DETECT LOCATION INTENT
+  if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address")) {
+    await sendWhatsAppMessage(senderId, "📍 Our store is located at: 312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Maps: https://maps.app.goo.gl/U1shqm6TSeJFTNvi6\n\nWe'd love to host you! Could you please tell us when you plan to visit so we can book a VIP store visit for you? 💛", config);
+    await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'General', status: 'New', reportedInDailyEmail: false });
+    return;
+  }
+  
+  // 3. DETECT PHONE NUMBER OR DATE (since senderId is already a phone number, they might just share a date)
+  const phoneRegex = /\b\d{10}\b/;
+  if (phoneRegex.test(messageText) || messageText.includes("monday") || messageText.includes("tuesday") || messageText.includes("wednesday") || messageText.includes("thursday") || messageText.includes("friday") || messageText.includes("saturday") || messageText.includes("sunday")) {
+    let extractedDate = messageText.includes("day") ? rawMessageText : "Date not specified";
+
+    await sendWhatsAppMessage(senderId, `✅ Thank you! We have noted your appointment details. We'll be waiting for you! 💛\n\n📍 Location: 312 Kuvempu Road, Kengeri, Bengaluru\n🗺️ Map: https://maps.app.goo.gl/U1shqm6TSeJFTNvi6\n📞 Contact: +91 9876543210`, config);
+    
+    const existingLead = await client.fetch(`*[_type == "lead" && instagramUsername == $username] | order(_createdAt desc)[0]`, { username });
+    if (existingLead) {
+      const updatePhone = phoneRegex.test(messageText) ? messageText.match(phoneRegex)?.[0] : senderId;
+      await writeClient.patch(existingLead._id).set({ phoneNumber: updatePhone, visitDate: extractedDate }).commit();
+    }
+    return;
+  }
+
+  // 4. CHECK DYNAMIC FAQs
+  const faqs = await getFaqs();
+  for (const faq of faqs) {
+    if (faq.keyword && messageText.includes(faq.keyword.toLowerCase())) {
+      await sendWhatsAppMessage(senderId, faq.response, config);
+      return;
+    }
+  }
+
+  // 5. PRICE CHECK (Unified for WhatsApp)
+  let mediaId: string | null = null;
+  const hasImage = message.type === 'image';
+
+  if (message.type === "interactive" && message.interactive?.type === "product") {
+    mediaId = message.interactive.product?.product_retailer_id || message.interactive.product?.product_id;
+  }
+  
+  if (!mediaId) {
+    const urlMatch = rawMessageText.match(/(?:instagram\.com\/(?:p|reel)\/|facebook\.com\/.*[?&]v=)([a-zA-Z0-9_-]+)/);
+    if (urlMatch) {
+      mediaId = urlMatch[1];
+    } else if (messageText.includes("price") || messageText.includes("cost")) {
+      const words = rawMessageText.split(/\s+/);
+      const possibleSku = words.find((w: string) => /[a-zA-Z]/.test(w) && /[0-9]/.test(w) && w.length >= 3);
+      if (possibleSku) mediaId = possibleSku;
+    }
+  }
+
+  if (messageText.includes("price") || messageText.includes("cost") || mediaId || hasImage) {
+    let product = null;
+    if (mediaId) {
+      product = await getProduct(mediaId);
+    }
+
+    const rates = await getRates();
+    let dmMessage = "";
+
+    if (product) {
+      dmMessage = buildProductDmMessage(product, rates);
+    } else if (mediaId || hasImage) {
+      dmMessage = "👋 Hey there! We see you're interested in a beautiful piece! 💛 However, the exact live price for this specific item hasn't been updated in our system yet.\n\nOur team is checking the details and will get back to you shortly, or you can leave your contact number here for immediate assistance!";
+    } else {
+      dmMessage = "👋 Hey there! To give you the exact price, could you please share the reel link, product image, or the SKU of the specific jewelry piece you're interested in? 💛\n\nOur team will check the details and get back to you with the exact live price!";
+    }
+
+    await sendWhatsAppMessage(senderId, dmMessage, config);
     return;
   }
 }
