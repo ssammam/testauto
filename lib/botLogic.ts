@@ -127,7 +127,10 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       breakdownText = `\n🪙 Material Value: ₹${Math.round(rawGoldValue).toLocaleString('en-IN')}\n✨ Making Charges ${makingStr}: ₹${Math.round(makingChargeTotal).toLocaleString('en-IN')}\n⚖️ GST (3%): ₹${Math.round(gst).toLocaleString('en-IN')}\n`;
     }
 
-    return `✨ ${product.name}\n${product.materialType === 'silver' ? 'Silver' : 'Hallmarked Gold'}\n\n⚖️ Weight: ${product.weightGrams}g\n${product.sku ? `[SKU: ${product.sku}]` : ''}${breakdownText}\n💰 Total Price: ₹${totalPrice.toLocaleString('en-IN')}\n${product.isPriceLocked ? '*(Incl. making & 3% GST)*\n' : ''}\n✓ BIS Hallmarked\n✓ Certified\n✓ Insured Shipping\n\nReply to this message to book an appointment or ask for similar designs! 💛`;
+    const isDefaultName = /^((FB )?Post \d+)$/i.test(product.name?.trim() || '');
+    const titleLine = isDefaultName ? `✨ Beautiful Design` : `✨ ${product.name}`;
+
+    return `${titleLine}\n${product.materialType === 'silver' ? 'Silver' : 'Hallmarked Gold'}\n\n⚖️ Weight: ${product.weightGrams}g\n${product.sku ? `[SKU: ${product.sku}]` : ''}${breakdownText}\n💰 Total Price: ₹${totalPrice.toLocaleString('en-IN')}\n${product.isPriceLocked ? '*(Incl. making & 3% GST)*\n' : ''}\n✓ BIS Hallmarked\n✓ Certified\n✓ Insured Shipping\n\nReply to this message to book an appointment or ask for similar designs! 💛`;
   }
   
   return "👋 Hey there! To give you the exact price, could you please share the reel, reply directly to the story, or comment on the post of the specific jewelry piece you're interested in? 💛\n\nOur team will check the details and get back to you with the exact live price!\n\n*(Note: Please avoid sending screenshots for price checks. Images are only used if you want to place a custom jewelry order.)*";
