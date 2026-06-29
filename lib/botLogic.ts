@@ -48,7 +48,15 @@ async function getProduct(mediaId: string) {
   const shortcodeMatch = mediaId.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
   const shortcode = shortcodeMatch ? shortcodeMatch[1] : (mediaId.length <= 11 && !mediaId.includes('http') ? mediaId : null);
 
-  const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId || reelId == $cleanMediaId || fbPostId == $cleanMediaId || sku match $mediaId || sku match $cleanMediaId || (shortcode != null && shortcode == $shortcode))][0]`, { mediaId, cleanMediaId, shortcode: shortcode || '' });
+  let fbExtractedId = null;
+  if (mediaId.includes('facebook.com') || mediaId.includes('fb.watch') || mediaId.includes('fb.com')) {
+     const fbMatch = mediaId.match(/\d{10,}/);
+     if (fbMatch) {
+       fbExtractedId = fbMatch[0];
+     }
+  }
+
+  const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId || reelId == $cleanMediaId || fbPostId == $cleanMediaId || sku match $mediaId || sku match $cleanMediaId || (shortcode != null && shortcode == $shortcode) || (fbPostId != null && fbPostId match $fbExtractedId))][0]`, { mediaId, cleanMediaId, shortcode: shortcode || '', fbExtractedId: fbExtractedId || '' });
   productCache.set(mediaId, { data: product, expiresAt: Date.now() + CACHE_TTL_MS });
   return product;
 }
