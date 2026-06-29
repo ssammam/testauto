@@ -50,10 +50,25 @@ async function getProduct(mediaId: string) {
   return product;
 }
 
-export function buildProductDmMessage(product: any, rates: any): string {
+export function buildProductDmMessage(product: any, rates: any, name: string = "there"): string {
   if (product) {
     if (product.status === 'sold') {
       return "✨ This beautiful piece has already been sold! Please DM us to check for similar designs or to place a custom order. 💛";
+    }
+
+    if (product.priceCalculationType === 'range') {
+      let rangeText = "";
+      if (product.rangeCategory === 'rings') {
+        rangeText = "Rings: ₹5,000 onwards";
+      } else if (product.rangeCategory === 'bracelets') {
+        rangeText = "Bracelets: ₹25,00 onwards";
+      } else if (product.rangeCategory === 'long_chains') {
+        rangeText = "Long Chains: ₹25,00 onwards";
+      } else {
+        rangeText = "Rings: ₹5,000 onwards\nBracelets: ₹25,00 onwards\nLong Chains: ₹25,00 onwards";
+      }
+
+      return `Namaste, ${name},\n\nThank you for your interest in our jewellery collection!\n\nMaking Charges: 0%\nWastage:10%\n\nStarting Price Range\n${rangeText}\n\n✅ BIS Hallmarked & Certified\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that product.\n\n⚠️ Disclaimer:\nFinal price is based on the billing date's gold rate & ornament weight.`;
     }
 
     let totalPrice = 0;
@@ -273,7 +288,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     
     let dmMessage = "";
     if (product) {
-      dmMessage = buildProductDmMessage(product, rates);
+      dmMessage = buildProductDmMessage(product, rates, name);
     } else if (mediaId || hasAttachment) {
       let isOurPost = false;
       if (mediaId) {
@@ -300,7 +315,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
         dmMessage = "👋 We see you've shared a beautiful design that isn't from our collection!\n\nWe specialize in custom jewelry. Would you like us to craft a custom piece inspired by this design? 💛\n\nPlease share your phone number, and our design expert will contact you to discuss details and provide an estimate!";
       }
     } else {
-      dmMessage = buildProductDmMessage(null, rates);
+      dmMessage = buildProductDmMessage(null, rates, name);
     }
 
     await dmText(senderId, dmMessage, config);
@@ -345,7 +360,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
         
         let dmMessage = "Hey there! 👋 You asked for the price on our recent post.";
         if (product) {
-          dmMessage = buildProductDmMessage(product, rates);
+          dmMessage = buildProductDmMessage(product, rates, commenterUsername || "there");
         } else {
           dmMessage = "👋 Hey there! We are currently checking the exact live price for this specific item. Our team will get back to you shortly! 💛";
         }
@@ -490,7 +505,7 @@ export async function processWhatsAppMessage(message: any, contacts: any[], conf
     let dmMessage = "";
 
     if (product) {
-      dmMessage = buildProductDmMessage(product, rates);
+      dmMessage = buildProductDmMessage(product, rates, name);
     } else if (mediaId || hasImage) {
       dmMessage = "👋 Hey there! We see you're interested in a beautiful piece! 💛 However, the exact live price for this specific item hasn't been updated in our system yet.\n\nOur team is checking the details and will get back to you shortly, or you can leave your contact number here for immediate assistance!";
     } else {

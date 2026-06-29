@@ -166,5 +166,32 @@ export const productReelType = defineType({
       type: 'text',
       description: 'Internal notes for staff (never shown to customers).',
     }),
+    defineField({
+      name: 'priceCalculationType',
+      title: 'Price Calculation Type',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Normal Price Calculation', value: 'normal' },
+          { title: 'Range Price', value: 'range' },
+        ],
+      },
+      initialValue: 'normal',
+      description: 'Select how the price should be calculated when a customer asks for it.',
+    }),
+    defineField({
+      name: 'rangeCategory',
+      title: 'Range Category',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Rings', value: 'rings' },
+          { title: 'Bracelets / Bangles', value: 'bracelets' },
+          { title: 'Long Chains', value: 'long_chains' },
+        ],
+      },
+      hidden: ({ document }) => document?.priceCalculationType !== 'range',
+      description: 'Select the category for the price range.',
+    }),
   ],
 })
