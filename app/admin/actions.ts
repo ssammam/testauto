@@ -113,27 +113,38 @@ export async function syncInstagramPosts() {
           }
         }
 
-        await writeClient.create({
-          _type: 'productReel',
-          postedOn,
-          reelId: post.id,
-          fbPostId: matchedFbPostId,
-          name: 'Post ' + post.id.substring(0, 5),
-          description: post.caption || '',
-          materialType: 'gold22k', // default
-          weightGrams: 0,
-          makingChargeType: 'percentage', // default
-          makingCharges: 0,
-          thumbnailUrl: post.thumbnail_url || post.media_url || '',
-          publishedAt: post.timestamp || new Date().toISOString(),
-          status: 'active',
-          isPriceLocked: false,
-        });
-        addedCount++;
-        
-        existingIgIds.set(post.id, { _id: 'new', reelId: post.id, fbPostId: matchedFbPostId, postedOn });
-        if (matchedFbPostId) {
-          existingFbIds.set(matchedFbPostId, { _id: 'new', reelId: post.id, fbPostId: matchedFbPostId, postedOn });
+        if (matchedFbPostId && existingFbIds.has(matchedFbPostId)) {
+          // The FB post is already in Sanity. Just append the IG id to it.
+          const existingFbDoc: any = existingFbIds.get(matchedFbPostId);
+          await writeClient.patch(existingFbDoc._id).set({
+            reelId: post.id,
+            postedOn: 'both'
+          }).commit();
+          
+          existingIgIds.set(post.id, { _id: existingFbDoc._id, reelId: post.id, fbPostId: matchedFbPostId, postedOn: 'both' });
+        } else {
+          await writeClient.create({
+            _type: 'productReel',
+            postedOn,
+            reelId: post.id,
+            fbPostId: matchedFbPostId,
+            name: 'Post ' + post.id.substring(0, 5),
+            description: post.caption || '',
+            materialType: 'gold22k', // default
+            weightGrams: 0,
+            makingChargeType: 'percentage', // default
+            makingCharges: 0,
+            thumbnailUrl: post.thumbnail_url || post.media_url || '',
+            publishedAt: post.timestamp || new Date().toISOString(),
+            status: 'active',
+            isPriceLocked: false,
+          });
+          addedCount++;
+          
+          existingIgIds.set(post.id, { _id: 'new', reelId: post.id, fbPostId: matchedFbPostId, postedOn });
+          if (matchedFbPostId) {
+            existingFbIds.set(matchedFbPostId, { _id: 'new', reelId: post.id, fbPostId: matchedFbPostId, postedOn });
+          }
         }
       } else {
         // Post exists, try to backfill fbPostId if missing
@@ -146,14 +157,26 @@ export async function syncInstagramPosts() {
             return fbMessageNormalized === igCaptionNormalized || fbMessageNormalized.includes(igCaptionNormalized) || igCaptionNormalized.includes(fbMessageNormalized);
           });
           
-          if (match && !existingFbIds.has(match.id)) {
-            // Found a match for an old post! Update it.
-            await writeClient.patch(existing._id).set({
-              fbPostId: match.id,
-              postedOn: 'both'
-            }).commit();
-            existingFbIds.set(match.id, { _id: existing._id, reelId: post.id, fbPostId: match.id, postedOn: 'both' });
-            // Not counting this as an "added" post since it was just updated
+          if (match) {
+            if (!existingFbIds.has(match.id)) {
+              // Found a match for an old post! Update it.
+              await writeClient.patch(existing._id).set({
+                fbPostId: match.id,
+                postedOn: 'both'
+              }).commit();
+              existingFbIds.set(match.id, { _id: existing._id, reelId: post.id, fbPostId: match.id, postedOn: 'both' });
+            } else {
+              // Both IG and FB exist separately! Merge them by attaching FB id to IG doc, and deleting FB doc.
+              const fbDoc: any = existingFbIds.get(match.id);
+              if (fbDoc._id !== existing._id) {
+                await writeClient.patch(existing._id).set({
+                  fbPostId: match.id,
+                  postedOn: 'both'
+                }).commit();
+                await writeClient.delete(fbDoc._id); // delete standalone FB doc
+                existingFbIds.set(match.id, { _id: existing._id, reelId: post.id, fbPostId: match.id, postedOn: 'both' });
+              }
+            }
           }
         }
       }

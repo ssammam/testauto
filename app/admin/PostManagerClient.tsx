@@ -67,7 +67,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col mt-8">
-      <div className="border-b border-gray-100 p-6 bg-gray-50/50 flex justify-between items-center">
+      <div className="border-b border-gray-100 p-6 bg-gray-50/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-3">
           <div className="bg-[#fcecf3] p-2 rounded-lg">
             <Camera className="w-5 h-5 text-[#d62976]" />
@@ -78,15 +78,15 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
           </div>
         </div>
         
-        <div className="flex items-center gap-4">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+          <div className="relative w-full sm:w-auto">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input 
               type="text" 
               placeholder="Search posts..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#d62976]/20 focus:border-[#d62976] w-64"
+              className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#d62976]/20 focus:border-[#d62976] w-full sm:w-64"
             />
           </div>
           {syncMessage && (
@@ -163,7 +163,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
 
               {editingId === post._id ? (
                 <form onSubmit={(e) => handleUpdate(e, post._id)} className="p-4 bg-gray-50/50 space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Product Name</label>
                       <input name="name" defaultValue={post.name} required className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
@@ -174,7 +174,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
                       <select name="status" defaultValue={post.status || 'active'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
@@ -204,7 +204,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                     <label className="block text-xs font-medium text-gray-700 mb-1">Description (Internal)</label>
                     <textarea name="description" defaultValue={post.description} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46] min-h-[40px]" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Material</label>
                       <select name="materialType" defaultValue={post.materialType} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
@@ -219,8 +219,8 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                       <input name="weightGrams" type="number" step="0.01" defaultValue={post.weightGrams} required className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 p-3 bg-white rounded-lg border border-gray-200">
-                    <div className="col-span-2 flex items-center gap-2 mb-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                    <div className="col-span-1 sm:col-span-2 flex items-center gap-2 mb-2">
                       <input type="checkbox" id={`lock-${post._id}`} name="isPriceLocked" value="true" defaultChecked={post.isPriceLocked} className="rounded text-[#7c6a46] focus:ring-[#7c6a46]" />
                       <label htmlFor={`lock-${post._id}`} className="text-xs font-medium text-gray-900">Lock Fixed Price?</label>
                     </div>
@@ -228,7 +228,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                       <label className="block text-xs font-medium text-gray-700 mb-1">Locked Price (₹)</label>
                       <input name="lockedPrice" type="number" defaultValue={post.lockedPrice} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="e.g. 145000" />
                     </div>
-                    <div className="col-span-2 grid grid-cols-2 gap-3">
+                    <div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">Making Charge Type</label>
                         <select name="makingChargeType" defaultValue={post.makingChargeType || 'percentage'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
@@ -244,7 +244,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white rounded-lg border border-gray-200">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Price Response Type</label>
                       <select name="priceCalculationType" defaultValue={post.priceCalculationType || 'normal'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
@@ -276,7 +276,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                 </form>
               ) : (
                 <div className="p-4">
-                  <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 text-sm">
                     <div className="bg-gray-50 p-2 rounded-lg">
                       <span className="block text-xs text-gray-500">Material</span>
                       <span className="font-medium text-gray-900">{
@@ -289,7 +289,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                       <span className="block text-xs text-gray-500">Weight</span>
                       <span className="font-medium text-gray-900">{post.weightGrams}g</span>
                     </div>
-                    <div className="bg-gray-50 p-2 rounded-lg col-span-2 flex justify-between items-center">
+                    <div className="bg-gray-50 p-2 rounded-lg col-span-1 sm:col-span-2 flex justify-between items-center">
                       <div>
                         <span className="block text-xs text-gray-500">Making Charges</span>
                         <span className="font-medium text-gray-900">
