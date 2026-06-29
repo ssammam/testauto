@@ -89,6 +89,12 @@ export const productReelType = defineType({
       }),
     }),
     defineField({
+      name: 'shortcode',
+      title: 'Instagram Shortcode',
+      type: 'string',
+      description: 'The shortcode of the Instagram post/reel (extracted from URL).',
+    }),
+    defineField({
       name: 'description',
       title: 'Post Description',
       type: 'text',

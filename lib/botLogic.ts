@@ -45,7 +45,10 @@ async function getProduct(mediaId: string) {
     }
   }
   const cleanMediaId = mediaId.includes('_') ? mediaId.split('_')[1] : mediaId;
-  const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId || reelId == $cleanMediaId || fbPostId == $cleanMediaId || sku match $mediaId || sku match $cleanMediaId)][0]`, { mediaId, cleanMediaId });
+  const shortcodeMatch = mediaId.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+  const shortcode = shortcodeMatch ? shortcodeMatch[1] : (mediaId.length <= 11 && !mediaId.includes('http') ? mediaId : null);
+
+  const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId || reelId == $cleanMediaId || fbPostId == $cleanMediaId || sku match $mediaId || sku match $cleanMediaId || (shortcode != null && shortcode == $shortcode))][0]`, { mediaId, cleanMediaId, shortcode: shortcode || '' });
   productCache.set(mediaId, { data: product, expiresAt: Date.now() + CACHE_TTL_MS });
   return product;
 }
@@ -291,28 +294,24 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
       dmMessage = buildProductDmMessage(product, rates, name);
     } else if (mediaId || hasAttachment) {
       let isOurPost = false;
-      if (mediaId) {
-        if (mediaId.startsWith("http")) {
-          isOurPost = false;
-        } else {
-          try {
-            const mediaRes = await fetch(`${baseUrl}/v25.0/${mediaId}?access_token=${config.token}`);
-            if (mediaRes.ok) {
-              const mediaData = await mediaRes.json();
-              if (!mediaData.error) {
-                isOurPost = true;
-              }
+      if (mediaId && !mediaId.startsWith("http")) {
+        try {
+          const mediaRes = await fetch(`${baseUrl}/v25.0/${mediaId}?access_token=${config.token}`);
+          if (mediaRes.ok) {
+            const mediaData = await mediaRes.json();
+            if (!mediaData.error) {
+              isOurPost = true;
             }
-          } catch {
-            // ignore error
           }
+        } catch {
+          // ignore error
         }
       }
 
       if (isOurPost) {
         dmMessage = "👋 Hey there! You've shared one of our pieces! 💛 However, the exact live price for this specific item hasn't been updated in our system yet.\n\nOur team is checking the details and will get back to you shortly, or you can leave your contact number here for immediate assistance!";
       } else {
-        dmMessage = "👋 We see you've shared a beautiful design that isn't from our collection!\n\nWe specialize in custom jewelry. Would you like us to craft a custom piece inspired by this design? 💛\n\nPlease share your phone number, and our design expert will contact you to discuss details and provide an estimate!";
+        dmMessage = "👋 Hey there! We see you've shared a beautiful piece! 💛\n\nIf this is from our collection, our team is currently calculating the exact live price for you.\n\nIf it's a design from elsewhere, we specialize in custom jewelry and would love to craft a custom piece inspired by it for you! 💛\n\nPlease share your phone number, and our design expert will contact you shortly to assist you further!";
       }
     } else {
       dmMessage = buildProductDmMessage(null, rates, name);

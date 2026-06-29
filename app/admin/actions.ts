@@ -98,6 +98,7 @@ export async function syncInstagramPosts() {
         // Find matching FB post based on caption
         let matchedFbPostId = undefined;
         let postedOn = 'instagram';
+        const shortcode = post.permalink ? post.permalink.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/)?.[1] : undefined;
         
         if (post.caption && fbPosts.length > 0) {
           const igCaptionNormalized = post.caption.trim().toLowerCase();
@@ -118,16 +119,18 @@ export async function syncInstagramPosts() {
           const existingFbDoc: any = existingFbIds.get(matchedFbPostId);
           await writeClient.patch(existingFbDoc._id).set({
             reelId: post.id,
+            shortcode,
             postedOn: 'both'
           }).commit();
           
-          existingIgIds.set(post.id, { _id: existingFbDoc._id, reelId: post.id, fbPostId: matchedFbPostId, postedOn: 'both' });
+          existingIgIds.set(post.id, { _id: existingFbDoc._id, reelId: post.id, fbPostId: matchedFbPostId, shortcode, postedOn: 'both' });
         } else {
           await writeClient.create({
             _type: 'productReel',
             postedOn,
             reelId: post.id,
             fbPostId: matchedFbPostId,
+            shortcode,
             name: 'Post ' + post.id.substring(0, 5),
             description: post.caption || '',
             materialType: 'gold22k', // default
@@ -141,7 +144,7 @@ export async function syncInstagramPosts() {
           });
           addedCount++;
           
-          existingIgIds.set(post.id, { _id: 'new', reelId: post.id, fbPostId: matchedFbPostId, postedOn });
+          existingIgIds.set(post.id, { _id: 'new', reelId: post.id, fbPostId: matchedFbPostId, shortcode, postedOn });
           if (matchedFbPostId) {
             existingFbIds.set(matchedFbPostId, { _id: 'new', reelId: post.id, fbPostId: matchedFbPostId, postedOn });
           }
@@ -149,6 +152,13 @@ export async function syncInstagramPosts() {
       } else {
         // Post exists, try to backfill fbPostId if missing
         const existing: any = existingIgIds.get(post.id);
+        const shortcode = post.permalink ? post.permalink.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/)?.[1] : undefined;
+        
+        if (!existing.shortcode && shortcode) {
+           await writeClient.patch(existing._id).set({ shortcode }).commit();
+           existing.shortcode = shortcode;
+        }
+
         if (!existing.fbPostId && post.caption && fbPosts.length > 0) {
           const igCaptionNormalized = post.caption.trim().toLowerCase();
           const match = fbPosts.find((fbp: any) => {
