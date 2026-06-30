@@ -23,6 +23,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
   const [syncMessage, setSyncMessage] = useState('');
   
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [localCalcType, setLocalCalcType] = useState('normal');
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -214,51 +215,65 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                         <option value="silver">Silver</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Weight (g)</label>
-                      <input name="weightGrams" type="number" step="0.01" defaultValue={post.weightGrams} required className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white rounded-lg border border-gray-200">
-                    <div className="col-span-1 sm:col-span-2 flex items-center gap-2 mb-2">
-                      <input type="checkbox" id={`lock-${post._id}`} name="isPriceLocked" value="true" defaultChecked={post.isPriceLocked} className="rounded text-[#7c6a46] focus:ring-[#7c6a46]" />
-                      <label htmlFor={`lock-${post._id}`} className="text-xs font-medium text-gray-900">Lock Fixed Price?</label>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Locked Price (₹)</label>
-                      <input name="lockedPrice" type="number" defaultValue={post.lockedPrice} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="e.g. 145000" />
-                    </div>
-                    <div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Making Charge Type</label>
-                        <select name="makingChargeType" defaultValue={post.makingChargeType || 'percentage'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
-                          <option value="percentage">Percentage (%)</option>
-                          <option value="flat">Flat Amount (₹)</option>
-                          <option value="per_gram">Per Gram (₹/g)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Making Charges Value</label>
-                        <input name="makingCharges" type="number" step="0.01" defaultValue={post.makingCharges} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="e.g. 15 for 15%" />
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white rounded-lg border border-gray-200">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Price Response Type</label>
-                      <select name="priceCalculationType" defaultValue={post.priceCalculationType || 'normal'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
+                      <select name="priceCalculationType" 
+                              value={localCalcType} 
+                              onChange={(e) => setLocalCalcType(e.target.value)} 
+                              className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
                         <option value="normal">Normal Calculation</option>
                         <option value="range">Range Price</option>
                       </select>
                     </div>
+                  </div>
+
+                  {localCalcType === 'normal' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Weight (g)</label>
+                        <input name="weightGrams" type="number" step="0.01" defaultValue={post.weightGrams} required={localCalcType === 'normal'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
+                      </div>
+                      <div className="flex items-center gap-2 mt-6">
+                        <input type="checkbox" id={`lock-${post._id}`} name="isPriceLocked" value="true" defaultChecked={post.isPriceLocked} className="rounded text-[#7c6a46] focus:ring-[#7c6a46]" />
+                        <label htmlFor={`lock-${post._id}`} className="text-xs font-medium text-gray-900">Lock Fixed Price?</label>
+                      </div>
+                      <div className="col-span-1 sm:col-span-2">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Locked Price (₹)</label>
+                        <input name="lockedPrice" type="number" defaultValue={post.lockedPrice} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="e.g. 145000" />
+                      </div>
+                    </div>
+                  )}
+
+                  {localCalcType === 'range' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Starting Weight (g)</label>
+                        <input name="minWeightGrams" type="number" step="0.01" defaultValue={post.minWeightGrams || 8} required={localCalcType === 'range'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Ending Weight (g)</label>
+                        <input name="maxWeightGrams" type="number" step="0.01" defaultValue={post.maxWeightGrams} required={localCalcType === 'range'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-white rounded-lg border border-gray-200">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Range Category</label>
-                      <select name="rangeCategory" defaultValue={post.rangeCategory || 'rings'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
-                        <option value="rings">Rings</option>
-                        <option value="bracelets">Bracelets / Bangles</option>
-                        <option value="long_chains">Long Chains</option>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Making Charge</label>
+                      <select name="makingChargeType" defaultValue={post.makingChargeType || 'percentage'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="flat">Flat Amount (₹)</option>
+                        <option value="per_gram">Per Gram (₹/g)</option>
                       </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Value</label>
+                      <input name="makingCharges" type="number" step="0.01" defaultValue={post.makingCharges} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="e.g. 15 for 15%" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Wastage (%)</label>
+                      <input name="wastage" type="number" step="0.01" defaultValue={post.wastage !== undefined ? post.wastage : 10} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" placeholder="10" />
                     </div>
                   </div>
                   
@@ -314,7 +329,10 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                       Preview DM
                     </button>
                     <button 
-                      onClick={() => setEditingId(post._id)}
+                      onClick={() => {
+                        setEditingId(post._id);
+                        setLocalCalcType(post.priceCalculationType || 'normal');
+                      }}
                       className="flex-1 py-2 px-4 bg-[#f0ece1] text-[#7c6a46] hover:bg-[#e6dfce] rounded-lg font-medium text-sm transition-colors"
                     >
                       Edit Product
@@ -367,34 +385,35 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
             <div className="p-4 bg-gray-50 flex-1">
               <div className="bg-white border rounded-xl p-4 shadow-sm text-sm text-gray-800 whitespace-pre-wrap font-sans">
                 {previewPost.status === 'sold' ? (
-                  "✨ This beautiful piece has already been sold! Please DM us to check for similar designs or to place a custom order. 💛"
+                  "This beautiful piece has already been sold! Please DM us to check for similar designs or to place a custom order. We are RH Jewellers Kengeri."
                 ) : previewPost.priceCalculationType === 'range' ? (
-                  `Namaste, First Name,\n\nThank you for your interest in our jewellery collection!\n\nMaking Charges: 0%\nWastage:10%\n\nStarting Price Range\n${
-                    previewPost.rangeCategory === 'rings' ? "Rings: ₹5,000 onwards" :
-                    previewPost.rangeCategory === 'bracelets' ? "Bracelets: ₹25,00 onwards" :
-                    previewPost.rangeCategory === 'long_chains' ? "Long Chains: ₹25,00 onwards" :
-                    "Rings: ₹5,000 onwards\nBracelets: ₹25,00 onwards\nLong Chains: ₹25,00 onwards"
-                  }\n\n✅ BIS Hallmarked & Certified\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that product.\n\n⚠️ Disclaimer:\nFinal price is based on the billing date's gold rate & ornament weight.`
+                  `Namaste, First Name,\n\nThank you for your interest in our ${previewPost.rangeCategoryName || previewPost.category || 'Jewellery'} collection!\n\nMaking Charges: ${previewPost.makingCharges || 0}%\nWastage: ${previewPost.wastage !== undefined ? previewPost.wastage : 10}%\n\nThe price of 1 gram 22kt Gold is LIVE_RATE as on TODAY.\nStarting Range for ${previewPost.rangeCategoryName || previewPost.category || 'Jewellery'} are from ${previewPost.minWeightGrams || 12}gms to ${previewPost.maxWeightGrams || 50} gms. Final price is based on the billing date's gold rate & ornament weight.\n\nBIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for... We are RH Jewellers Kengeri.`
                 ) : (
                   <>
-                    ✨ {previewPost.name}
+                    Namaste, First Name,
+                    <br /><br />
+                    Thank you for your interest in our {previewPost.category ? previewPost.category.charAt(0).toUpperCase() + previewPost.category.slice(1) : 'Jewellery'} collection!
+                    <br /><br />
+                    Making Charges: {previewPost.makingCharges || 0}%
+                    <br />
+                    Wastage: {previewPost.wastage !== undefined ? previewPost.wastage : 10}%
+                    <br /><br />
+                    The price of 1 gram 22kt Gold is LIVE_RATE as on TODAY.
+                    <br /><br />
+                    {previewPost.name || (previewPost.category ? previewPost.category.charAt(0).toUpperCase() + previewPost.category.slice(1) : 'Jewellery')}
                     <br />
                     {previewPost.materialType === 'silver' ? 'Silver' : 'Hallmarked Gold'}
+                    <br />
+                    Weight: {previewPost.weightGrams}g
+                    <br />
+                    Total Price: ₹{previewPost.isPriceLocked ? previewPost.lockedPrice : 'LIVE_CALCULATED'}
+                    <br />
+                    {previewPost.isPriceLocked ? '*(Incl. GST)*\n' : ''}
+                    BIS Hallmarked & Certified
                     <br /><br />
-                    ⚖️ Weight: {previewPost.weightGrams}g
-                    <br />
-                    {previewPost.sku && `[SKU: ${previewPost.sku}]\n\n`}
-                    💰 Today's Price: ₹{previewPost.isPriceLocked ? previewPost.lockedPrice : 'LIVE_CALCULATED'}
-                    <br />
-                    <span className="text-xs text-gray-500">*(Incl. making & 3% GST)*</span>
+                    Contact: 9620741404
                     <br /><br />
-                    ✓ BIS Hallmarked
-                    <br />
-                    ✓ Certified
-                    <br />
-                    ✓ Insured Shipping
-                    <br /><br />
-                    Reply to this message to book an appointment or ask for similar designs! 💛
+                    Please let us know what you're looking for, and we'll help you with detailed information about that particular product. We are RH Jewellers Kengeri.
                   </>
                 )}
               </div>

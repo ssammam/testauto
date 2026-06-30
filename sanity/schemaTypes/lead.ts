@@ -25,7 +25,7 @@ export const leadType = defineType({
       title: 'Query Type',
       type: 'string',
       options: {
-        list: ['Gold', 'Silver', 'General', 'Reel Inquiry']
+        list: ['Store Visit', 'Custom Design', 'General', 'Reel Inquiry', 'Gold', 'Silver']
       }
     }),
     defineField({

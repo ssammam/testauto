@@ -5,6 +5,7 @@ export const client = createClient({
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
   apiVersion: '2024-01-01',
   useCdn: false, // Set to false if statically generating pages, using ISR or tag-based revalidation
+  fetch: { cache: 'no-store' }
 })
 
 export const writeClient = createClient({
@@ -13,4 +14,5 @@ export const writeClient = createClient({
   apiVersion: '2024-01-01',
   useCdn: false,
   token: process.env.SANITY_API_TOKEN,
+  fetch: { cache: 'no-store' }
 })

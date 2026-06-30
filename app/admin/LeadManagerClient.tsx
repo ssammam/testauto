@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { updateLeadStatus } from './actions';
-import { Phone, User, AtSign, Calendar, Clock, ArrowRightCircle } from 'lucide-react';
+import { Phone, User, AtSign, Calendar, MapPin, Sparkles, Folder } from 'lucide-react';
 
 export default function LeadManagerClient({ initialLeads }: { initialLeads: any[] }) {
   const [leads, setLeads] = useState(initialLeads);
@@ -27,18 +27,22 @@ export default function LeadManagerClient({ initialLeads }: { initialLeads: any[
     }
   };
 
-  return (
+  const incomers = leads.filter(l => l.queryType === 'Store Visit' && l.phoneNumber);
+  const customDesign = leads.filter(l => l.queryType === 'Custom Design');
+  const generalLeads = leads.filter(l => !((l.queryType === 'Store Visit' && l.phoneNumber) || l.queryType === 'Custom Design'));
+
+  const renderTable = (title: string, desc: string, icon: any, data: any[]) => (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-8">
       <div className="bg-[#2A2A2A] p-6 text-white flex justify-between items-center">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
-            <User className="w-5 h-5 text-[#e1b366]" />
-            Lead Management CRM
+            {icon}
+            {title}
           </h2>
-          <p className="text-sm text-gray-300 mt-1">Track store visits and inquiries automatically captured from Instagram.</p>
+          <p className="text-sm text-gray-300 mt-1">{desc}</p>
         </div>
         <div className="bg-white/10 px-4 py-2 rounded-lg text-sm font-medium backdrop-blur-md">
-          {leads.length} Total Leads
+          {data.length} Leads
         </div>
       </div>
 
@@ -55,12 +59,12 @@ export default function LeadManagerClient({ initialLeads }: { initialLeads: any[
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {leads.length === 0 ? (
+              {data.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-gray-500">No leads captured yet.</td>
+                  <td colSpan={5} className="py-8 text-center text-gray-500">No leads found in this category.</td>
                 </tr>
               ) : (
-                leads.map((lead) => (
+                data.map((lead) => (
                   <tr key={lead._id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="py-4 px-4">
                       <div className="flex flex-col">
@@ -93,12 +97,12 @@ export default function LeadManagerClient({ initialLeads }: { initialLeads: any[
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <span className="text-sm text-gray-600 bg-gray-50 border border-gray-100 px-2 py-1 rounded-md">
+                      <span className="text-sm text-gray-600 bg-gray-50 border border-gray-100 px-2 py-1 rounded-md whitespace-nowrap">
                         {lead.queryType || 'General'}
                       </span>
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-500">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <Calendar className="w-3.5 h-3.5" />
                         {new Date(lead._createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </div>
@@ -129,6 +133,31 @@ export default function LeadManagerClient({ initialLeads }: { initialLeads: any[
           </table>
         </div>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {renderTable(
+        "Incomers", 
+        "Customers who have requested a store visit and provided a phone number.", 
+        <MapPin className="w-5 h-5 text-[#e1b366]" />, 
+        incomers
+      )}
+      
+      {renderTable(
+        "Custom Design Requests", 
+        "Customers who shared external designs and are interested in custom jewelry.", 
+        <Sparkles className="w-5 h-5 text-[#e1b366]" />, 
+        customDesign
+      )}
+
+      {renderTable(
+        "General Inquiries", 
+        "All other inquiries, price checks, and partial leads.", 
+        <Folder className="w-5 h-5 text-[#e1b366]" />, 
+        generalLeads
+      )}
     </div>
   );
 }

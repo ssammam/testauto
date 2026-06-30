@@ -4,6 +4,18 @@ export const productReelType = defineType({
   name: 'productReel',
   title: 'Social Media Posts / Products',
   type: 'document',
+  fieldsets: [
+    {
+      name: 'social',
+      title: 'Social Media & Post Details',
+      options: { collapsible: true, collapsed: true }
+    },
+    {
+      name: 'pricing',
+      title: 'Pricing & Calculation',
+      options: { collapsible: true, collapsed: false }
+    }
+  ],
   fields: [
     defineField({
       name: 'name',
@@ -48,71 +60,6 @@ export const productReelType = defineType({
       },
     }),
     defineField({
-      name: 'postedOn',
-      title: 'Platform(s) Posted On',
-      type: 'string',
-      options: {
-        list: [
-          { title: 'Instagram and Facebook', value: 'both' },
-          { title: 'Instagram Only', value: 'instagram' },
-          { title: 'Facebook Only', value: 'facebook' },
-        ],
-        layout: 'radio',
-      },
-      initialValue: 'both',
-      validation: (rule) => rule.required(),
-    }),
-    defineField({
-      name: 'reelId',
-      title: 'Instagram Post/Reel ID',
-      type: 'string',
-      description: 'The ID of the Instagram reel or post (used by webhook).',
-      hidden: ({ document }) => document?.postedOn === 'facebook',
-      validation: (rule) => rule.custom((value, context) => {
-        if ((context.document?.postedOn === 'instagram' || context.document?.postedOn === 'both') && !value) {
-          return 'Instagram ID is required when posted on Instagram';
-        }
-        return true;
-      }),
-    }),
-    defineField({
-      name: 'fbPostId',
-      title: 'Facebook Post ID',
-      type: 'string',
-      description: 'The ID of the Facebook post (used by Facebook webhook).',
-      hidden: ({ document }) => document?.postedOn === 'instagram',
-      validation: (rule) => rule.custom((value, context) => {
-        if ((context.document?.postedOn === 'facebook' || context.document?.postedOn === 'both') && !value) {
-          return 'Facebook Post ID is required when posted on Facebook';
-        }
-        return true;
-      }),
-    }),
-    defineField({
-      name: 'shortcode',
-      title: 'Instagram Shortcode',
-      type: 'string',
-      description: 'The shortcode of the Instagram post/reel (extracted from URL).',
-    }),
-    defineField({
-      name: 'description',
-      title: 'Post Description',
-      type: 'text',
-      description: 'The description or caption of the post.',
-    }),
-    defineField({
-      name: 'thumbnailUrl',
-      title: 'Thumbnail URL',
-      type: 'url',
-      description: 'URL of the post thumbnail or image.',
-    }),
-    defineField({
-      name: 'publishedAt',
-      title: 'Published At',
-      type: 'datetime',
-      description: 'The date and time the post was published on Instagram.',
-    }),
-    defineField({
       name: 'materialType',
       title: 'Material Type',
       type: 'string',
@@ -126,19 +73,109 @@ export const productReelType = defineType({
       },
       validation: (rule) => rule.required(),
     }),
+    
+    // --- SOCIAL FIELDSET ---
+    defineField({
+      name: 'postedOn',
+      title: 'Platform(s) Posted On',
+      type: 'string',
+      fieldset: 'social',
+      options: {
+        list: [
+          { title: 'Instagram and Facebook', value: 'both' },
+          { title: 'Instagram Only', value: 'instagram' },
+          { title: 'Facebook Only', value: 'facebook' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'both',
+    }),
+    defineField({
+      name: 'reelId',
+      title: 'Instagram Post/Reel ID',
+      type: 'string',
+      fieldset: 'social',
+      description: 'The ID of the Instagram reel or post.',
+      hidden: ({ document }) => document?.postedOn === 'facebook',
+    }),
+    defineField({
+      name: 'fbPostId',
+      title: 'Facebook Post ID',
+      type: 'string',
+      fieldset: 'social',
+      description: 'The ID of the Facebook post.',
+      hidden: ({ document }) => document?.postedOn === 'instagram',
+    }),
+    defineField({
+      name: 'shortcode',
+      title: 'Instagram Shortcode',
+      type: 'string',
+      fieldset: 'social',
+    }),
+    defineField({
+      name: 'description',
+      title: 'Post Description / Caption',
+      type: 'text',
+      fieldset: 'social',
+    }),
+    defineField({
+      name: 'thumbnailUrl',
+      title: 'Thumbnail URL',
+      type: 'url',
+      fieldset: 'social',
+    }),
+    defineField({
+      name: 'publishedAt',
+      title: 'Published At',
+      type: 'datetime',
+      fieldset: 'social',
+    }),
+
+    // --- PRICING FIELDSET ---
+    defineField({
+      name: 'priceCalculationType',
+      title: 'Calculation Mode (Toggle)',
+      type: 'string',
+      fieldset: 'pricing',
+      options: {
+        list: [
+          { title: 'Normal (Specific Weight & Price)', value: 'normal' },
+          { title: 'Range (Price Onwards)', value: 'range' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'normal',
+    }),
     defineField({
       name: 'weightGrams',
       title: 'Weight (Grams)',
       type: 'number',
-      validation: (rule) => rule.required(),
+      fieldset: 'pricing',
+      hidden: ({ document }) => document?.priceCalculationType === 'range',
+    }),
+    defineField({
+      name: 'minWeightGrams',
+      title: 'Starting Weight (Grams)',
+      type: 'number',
+      fieldset: 'pricing',
+      initialValue: 8,
+      hidden: ({ document }) => document?.priceCalculationType !== 'range',
+    }),
+    defineField({
+      name: 'maxWeightGrams',
+      title: 'Ending Weight (Grams)',
+      type: 'number',
+      fieldset: 'pricing',
+      hidden: ({ document }) => document?.priceCalculationType !== 'range',
     }),
     defineField({
       name: 'makingChargeType',
       title: 'Making Charge Type',
       type: 'string',
+      fieldset: 'pricing',
       options: {
         list: [
-          { title: 'Percentage (%) of Gold Value', value: 'percentage' },
+          { title: 'Percentage (%)', value: 'percentage' },
           { title: 'Flat Amount (₹)', value: 'flat' },
           { title: 'Per Gram (₹/g)', value: 'per_gram' },
         ],
@@ -147,58 +184,43 @@ export const productReelType = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
+      name: 'wastage',
+      title: 'Wastage (%)',
+      type: 'number',
+      fieldset: 'pricing',
+      initialValue: 10,
+      validation: (rule) => rule.required(),
+    }),
+    defineField({
       name: 'makingCharges',
       title: 'Making Charges Value',
       type: 'number',
-      description: 'Enter the percentage (e.g. 15 for 15%) or flat amount.',
+      fieldset: 'pricing',
+      initialValue: 0,
       validation: (rule) => rule.required(),
     }),
     defineField({
       name: 'isPriceLocked',
       title: 'Lock Price',
       type: 'boolean',
-      description: 'If true, the locked price will be used instead of live calculation.',
+      fieldset: 'pricing',
       initialValue: false,
+      hidden: ({ document }) => document?.priceCalculationType === 'range',
     }),
     defineField({
       name: 'lockedPrice',
       title: 'Locked Price (₹)',
       type: 'number',
-      description: 'Fixed price to show if Price is Locked.',
+      fieldset: 'pricing',
+      hidden: ({ document }) => document?.priceCalculationType === 'range' || !document?.isPriceLocked,
     }),
+    
+    // --- NOTES ---
     defineField({
       name: 'notes',
       title: 'Private Notes',
       type: 'text',
-      description: 'Internal notes for staff (never shown to customers).',
-    }),
-    defineField({
-      name: 'priceCalculationType',
-      title: 'Price Calculation Type',
-      type: 'string',
-      options: {
-        list: [
-          { title: 'Normal Price Calculation', value: 'normal' },
-          { title: 'Range Price', value: 'range' },
-        ],
-      },
-      initialValue: 'normal',
-      description: 'Select how the price should be calculated when a customer asks for it.',
-    }),
-    defineField({
-      name: 'rangeCategory',
-      title: 'Range Category',
-      type: 'string',
-      options: {
-        list: [
-          { title: 'Rings', value: 'rings' },
-          { title: 'Bracelets / Bangles', value: 'bracelets' },
-          { title: 'Long Chains', value: 'long_chains' },
-          { title: 'Mangalya Chains', value: 'mangalya_chains' },
-        ],
-      },
-      hidden: ({ document }) => document?.priceCalculationType !== 'range',
-      description: 'Select the category for the price range.',
+      description: 'Internal notes for staff.',
     }),
   ],
 })
