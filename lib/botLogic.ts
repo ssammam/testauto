@@ -309,7 +309,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
 
   const mediaId = replyToStory?.id || sharedMediaId;
 
-  if (messageText.includes("price") || mediaId) {
+  if (messageText.includes("am") || mediaId) {
     let product = null;
     if (mediaId) {
       product = await getProduct(mediaId, fbTitleFallback);
@@ -368,7 +368,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
 
   console.log(`[${config.platform} handleComment] Received comment ${commentId} from ${commenterUsername}: "${commentText}" (mediaId: ${mediaId})`);
 
-  if (commentText.includes("price")) {
+  if (commentText.includes("am")) {
     if (commentText.includes("sent to your dm") || commentText.includes("message requests")) return;
 
     if (commentId) {
@@ -496,14 +496,14 @@ export async function processWhatsAppMessage(message: any, contacts: any[], conf
     const urlMatch = rawMessageText.match(/(?:instagram\.com\/(?:p|reel)\/|facebook\.com\/.*[?&]v=)([a-zA-Z0-9_-]+)/);
     if (urlMatch) {
       mediaId = urlMatch[1];
-    } else if (messageText.includes("price") || messageText.includes("cost")) {
+    } else if (messageText.includes("am") || messageText.includes("cost")) {
       const words = rawMessageText.split(/\s+/);
       const possibleSku = words.find((w: string) => /[a-zA-Z]/.test(w) && /[0-9]/.test(w) && w.length >= 3);
       if (possibleSku) mediaId = possibleSku;
     }
   }
 
-  if (messageText.includes("price") || messageText.includes("cost") || mediaId || hasImage) {
+  if (messageText.includes("am") || messageText.includes("cost") || mediaId || hasImage) {
     let product = null;
     if (mediaId) {
       product = await getProduct(mediaId);
