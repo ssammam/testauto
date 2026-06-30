@@ -304,7 +304,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
   if (profileCache.has(senderId) && profileCache.get(senderId)!.expiresAt > Date.now()) {
     profile = profileCache.get(senderId)!.data;
   } else {
-    const fields = config.platform === "facebook" ? "username,name,first_name" : "username,name";
+    const fields = config.platform === "facebook" ? "name,first_name,last_name,profile_pic" : "name,username,profile_pic";
     try {
       const profileRes = await fetch(`${baseUrl}/v25.0/${senderId}?fields=${fields}&access_token=${config.token}`);
       if (profileRes.ok) {
@@ -316,7 +316,11 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     }
   }
 
-  const name: string = profile.first_name || profile.name || profile.username || "there";
+  let firstName = profile.first_name;
+  if (!firstName && profile.name) {
+    firstName = profile.name.split(" ")[0];
+  }
+  const name: string = firstName || profile.username || "there";
   const username: string = profile.username || profile.name || senderId;
 
   // 1. GREETING
@@ -442,6 +446,12 @@ export async function processComment(change: Record<string, any>, config: BotCon
 
   const commentId = config.platform === "facebook" ? value.comment_id : value.id;
   const commenterUsername = (value.from?.username || value.from?.name || "");
+  let commenterFirstName = "";
+  if (value.from?.name) {
+    commenterFirstName = value.from.name.split(" ")[0];
+  } else if (value.from?.username) {
+    commenterFirstName = value.from.username;
+  }
   const commentText = (value.text || value.message || "").toLowerCase();
   let mediaId = config.platform === "facebook" ? (value.post_id || value.video_id) : value.media?.id;
   mediaId = mediaId ? String(mediaId) : null;
@@ -467,11 +477,11 @@ export async function processComment(change: Record<string, any>, config: BotCon
         
         const rates = await getRates();
         
-        let dmMessage = `Namaste, ${commenterUsername || "there"}! You asked for the price on our recent post. We are RH Jewellers Kengeri.`;
+        let dmMessage = `Namaste, ${commenterFirstName || "there"}! You asked for the price on our recent post. We are RH Jewellers Kengeri.`;
         if (product) {
-          dmMessage = buildProductDmMessage(product, rates, commenterUsername || "there");
+          dmMessage = buildProductDmMessage(product, rates, commenterFirstName || "there");
         } else {
-          dmMessage = `Namaste, ${commenterUsername || "there"}! We are currently checking the exact live price for this specific item. Our team will get back to you shortly! We are RH Jewellers Kengeri.`;
+          dmMessage = `Namaste, ${commenterFirstName || "there"}! We are currently checking the exact live price for this specific item. Our team will get back to you shortly! We are RH Jewellers Kengeri.`;
         }
         
         await sendDM({ comment_id: commentId }, { message: { text: dmMessage } }, config);
