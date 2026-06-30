@@ -53,10 +53,10 @@ export async function syncInstagramPosts() {
     // For Facebook Page Token (connected IG account)
     let fetchUrl = "";
     if (TOKEN.startsWith("IGAA")) {
-      fetchUrl = `${baseUrl}/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&access_token=${TOKEN}`;
+      fetchUrl = `${baseUrl}/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&access_token=${TOKEN}&limit=100`;
     } else {
       const IG_ID = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
-      fetchUrl = `${baseUrl}/v20.0/${IG_ID}/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&access_token=${TOKEN}`;
+      fetchUrl = `${baseUrl}/v20.0/${IG_ID}/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&access_token=${TOKEN}&limit=100`;
     }
 
     const res = await fetch(fetchUrl);
