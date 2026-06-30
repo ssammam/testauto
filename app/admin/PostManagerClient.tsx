@@ -215,6 +215,7 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                         <option value="silver">Silver</option>
                       </select>
                     </div>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white rounded-lg border border-gray-200">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Price Response Type</label>
