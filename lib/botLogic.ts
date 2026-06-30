@@ -11,13 +11,8 @@ interface CacheItem<T> {
   expiresAt: number;
 }
 
-const productCache = new Map<string, CacheItem<any>>();
-let ratesCache: CacheItem<any> | null = null;
 let faqsCache: CacheItem<any[]> | null = null;
-const profileCache = new Map<string, CacheItem<any>>();
-
-const CACHE_TTL_MS = 1000 * 60 * 15; // 15 minutes cache
-const PROFILE_CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour for user profiles
+const CACHE_TTL_MS = 1000 * 60 * 15; // 15 minutes cache for FAQs
 
 async function getFaqs() {
   if (faqsCache && faqsCache.expiresAt > Date.now()) {
@@ -29,11 +24,7 @@ async function getFaqs() {
 }
 
 async function getRates() {
-  if (ratesCache && ratesCache.expiresAt > Date.now()) {
-    return ratesCache.data;
-  }
   const rates = await client.fetch(`*[_type == "dailyPrice"] | order(_updatedAt desc)[0]`);
-  ratesCache = { data: rates, expiresAt: Date.now() + CACHE_TTL_MS };
   return rates;
 }
 
@@ -59,7 +50,7 @@ export function extractProductInfo(desc: string, currentCategory: string = "") {
     }
   }
 
-  const rangeMatch = descLower.match(/(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*(?:g|gm|gms|grams)?\s*(?:-|to)\s*(\d+(?:\.\d+)?)\s*(?:g|gm|gms|grams)\b/i);
+  const rangeMatch = descLower.match(/(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|grams)?\s*(?:-|to)\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|grams)\b/i);
   if (rangeMatch) {
     updates.minWeightGrams = parseFloat(rangeMatch[1]);
     updates.maxWeightGrams = parseFloat(rangeMatch[2]);
@@ -67,7 +58,7 @@ export function extractProductInfo(desc: string, currentCategory: string = "") {
     return updates;
   }
 
-  const weightRegex = /(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*(?:g|gm|gms|grams)\b/gi;
+  const weightRegex = /(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|grams)\b/gi;
   const matches = [...descLower.matchAll(weightRegex)];
   
   if (matches.length > 0) {
@@ -86,23 +77,13 @@ export function extractProductInfo(desc: string, currentCategory: string = "") {
     return updates;
   }
 
-  if (updates.category || currentCategory) {
-    updates.priceCalculationType = 'range';
-    return updates;
-  }
-
+  // If no weight was found, it MUST be a draft so the admin can manually add the weight.
   updates.status = 'draft';
-  updates.notes = 'Needs Manual Review - No weight or category detected from post caption.';
+  updates.notes = 'Needs Manual Review - No weight detected from post caption.';
   return updates;
 }
 
 async function getProduct(mediaId: string, title: string | null = null) {
-  if (productCache.has(mediaId)) {
-    const cached = productCache.get(mediaId)!;
-    if (cached.expiresAt > Date.now()) {
-      return cached.data;
-    }
-  }
   const cleanMediaId = mediaId.includes('_') ? mediaId.split('_')[1] : mediaId;
   const shortcodeMatch = mediaId.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
   const shortcode = shortcodeMatch ? shortcodeMatch[1] : (mediaId.length <= 11 && !mediaId.includes('http') ? mediaId : null);
@@ -128,7 +109,6 @@ async function getProduct(mediaId: string, title: string | null = null) {
     writeClient.patch(product._id).set(extracted).commit().catch(console.error);
   }
 
-  productCache.set(mediaId, { data: product, expiresAt: Date.now() + CACHE_TTL_MS });
   return product;
 }
 
@@ -301,19 +281,15 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
 
   // Get sender profile (with caching to prevent Meta API rate limits)
   let profile: any = {};
-  if (profileCache.has(senderId) && profileCache.get(senderId)!.expiresAt > Date.now()) {
-    profile = profileCache.get(senderId)!.data;
-  } else {
-    const fields = config.platform === "facebook" ? "name,first_name,last_name,profile_pic" : "name,username,profile_pic";
-    try {
-      const profileRes = await fetch(`${baseUrl}/v25.0/${senderId}?fields=${fields}&access_token=${config.token}`);
-      if (profileRes.ok) {
-        profile = await profileRes.json();
-        profileCache.set(senderId, { data: profile, expiresAt: Date.now() + PROFILE_CACHE_TTL_MS });
-      }
-    } catch (e) {
-      console.error(`[${config.platform}] Failed to fetch profile for ${senderId}`, e);
+  
+  const fields = config.platform === "facebook" ? "name,first_name,last_name,profile_pic" : "name,username,profile_pic";
+  try {
+    const profileRes = await fetch(`${baseUrl}/v25.0/${senderId}?fields=${fields}&access_token=${config.token}`);
+    if (profileRes.ok) {
+      profile = await profileRes.json();
     }
+  } catch (e) {
+    console.error(`[${config.platform}] Failed to fetch profile for ${senderId}`, e);
   }
 
   let firstName = profile.first_name;
@@ -336,16 +312,50 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     return;
   }
 
-  // 2.5 DETECT LOCATION INTENT
-  if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address") || messageText.includes("place") || messageText.includes("landmark")) {
+  // 2.5 DETECT LOCATION / CONTACT INTENT
+  if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address") || messageText.includes("place") || messageText.includes("landmark") || messageText.includes("contact") || messageText.includes("phone") || messageText.includes("number") || messageText.includes("call")) {
     await dmText(senderId, `Namaste, ${name}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`, config);
     await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'Store Visit', status: 'New', reportedInDailyEmail: false });
     return;
   }
 
+  // 2.6 DETECT OLD GOLD EXCHANGE
+  if (messageText.includes("old gold") || messageText.includes("exchange")) {
+    await dmText(senderId, `Namaste, ${name}\n\nYes, we take old gold! Please visit our store so you can exchange them for a brand new product!\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`, config);
+    await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'Old Gold Exchange', status: 'New', reportedInDailyEmail: false });
+    return;
+  }
+
+  // 2.7 DETECT MAKING CHARGES / WASTAGE QUERY
+  if (messageText.includes("making charges") || messageText.includes("making charge") || messageText.includes("mc") || messageText.includes("wastage") || messageText.includes("wasteage")) {
+    await dmText(senderId, `Namaste, ${name}\n\nWastage is 10%, but Making Charges are 0! We don't charge for making! Visit us to buy jewelry.\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe are RH Jewellers Kengeri.`, config);
+    return;
+  }
+
+  // 2.8 DETECT LIVE GOLD/SILVER RATE QUERY
+  if (messageText.includes("rate") || messageText.includes("18k") || messageText.includes("22k") || messageText.includes("24k") || messageText.includes("silver")) {
+    const rates = await getRates();
+    const d = new Date();
+    const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
+    const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+    
+    let rateReply = `Namaste, ${name}!\n\nHere are our live rates as of ${dateStr}:\n`;
+    if (rates?.goldRate24k) rateReply += `\n🔸 24K Gold: ₹${rates.goldRate24k.toLocaleString('en-IN')} per gram`;
+    if (rates?.goldRate22k) rateReply += `\n🔸 22K Gold: ₹${rates.goldRate22k.toLocaleString('en-IN')} per gram`;
+    if (rates?.goldRate18k) rateReply += `\n🔸 18K Gold: ₹${rates.goldRate18k.toLocaleString('en-IN')} per gram`;
+    if (rates?.silverRate) rateReply += `\n🔸 Silver: ₹${(rates.silverRate / 1000).toLocaleString('en-IN')} per gram`;
+    
+    rateReply += `\n\nIs there a specific jewelry design you are looking for? We are RH Jewellers Kengeri.`;
+    await dmText(senderId, rateReply, config);
+    return;
+  }
+
   // 3. DETECT PHONE NUMBER OR DATE (appointment booking)
-  const phoneRegex = /\b\d{10}\b/;
-  if (phoneRegex.test(messageText) || messageText.includes("monday") || messageText.includes("tuesday") || messageText.includes("wednesday") || messageText.includes("thursday") || messageText.includes("friday") || messageText.includes("saturday") || messageText.includes("sunday")) {
+  // Strip all non-digits to see if they provided a phone number
+  const numbersOnly = messageText.replace(/\D/g, "");
+  const providedPhone = numbersOnly.length >= 10 ? numbersOnly.slice(-10) : null;
+
+  if (providedPhone || messageText.includes("monday") || messageText.includes("tuesday") || messageText.includes("wednesday") || messageText.includes("thursday") || messageText.includes("friday") || messageText.includes("saturday") || messageText.includes("sunday")) {
     let extractedDate = messageText.includes("day") ? rawMessageText : "Date not specified";
 
     await dmText(senderId, `Thank you! We have noted your appointment details. We'll be waiting for you!\n\n📍 Location: 312 Kuvempu Road, Kengeri, Bengaluru\nMap: https://share.google/wfAwpsnVcIuq32IIx\nContact: 9620741404\n\nWe are RH Jewellers Kengeri.`, config);
@@ -353,7 +363,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     // Check if we have a recent lead for this user and update it with the phone/date
     const existingLead = await client.fetch(`*[_type == "lead" && instagramUsername == $username] | order(_createdAt desc)[0]`, { username });
     if (existingLead) {
-      const updatePhone = phoneRegex.test(messageText) ? messageText.match(phoneRegex)?.[0] : "Not provided";
+      const updatePhone = providedPhone || "Not provided";
       await writeClient.patch(existingLead._id).set({ phoneNumber: updatePhone, visitDate: extractedDate }).commit();
     }
     return;
@@ -394,7 +404,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
 
   const mediaId = replyToStory?.id || sharedMediaId;
 
-  if (messageText.includes("price") || mediaId) {
+  if (messageText.includes("price") || /\bpp\b/.test(messageText) || mediaId) {
     let product = null;
     if (mediaId) {
       product = await getProduct(mediaId, fbTitleFallback);
@@ -460,7 +470,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
 
   console.log(`[${config.platform} handleComment] Received comment ${commentId} from ${commenterUsername}: "${commentText}" (mediaId: ${mediaId})`);
 
-  if (commentText.includes("price")) {
+  if (commentText.includes("price") || /\bpp\b/.test(commentText)) {
     if (commentText.includes("sent to your dm") || commentText.includes("message requests")) return;
 
     if (commentId) {
