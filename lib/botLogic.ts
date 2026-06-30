@@ -50,21 +50,26 @@ export function extractProductInfo(desc: string, currentCategory: string = "") {
     }
   }
 
-  const rangeMatch = descLower.match(/(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|grams)?\s*(?:-|to)\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|grams)\b/i);
-  if (rangeMatch) {
-    updates.minWeightGrams = parseFloat(rangeMatch[1]);
-    updates.maxWeightGrams = parseFloat(rangeMatch[2]);
-    updates.priceCalculationType = 'range';
-    return updates;
+  let allWeights: number[] = [];
+
+  // Find all ranges (e.g. 8-12 grams, 4 to 5 grams)
+  const rangeRegex = /(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|grams)?\s*(?:-|to)\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|grams)\b/gi;
+  const rangeMatches = [...descLower.matchAll(rangeRegex)];
+  for (const match of rangeMatches) {
+    allWeights.push(parseFloat(match[1]));
+    allWeights.push(parseFloat(match[2]));
   }
 
+  // Find all single weights (e.g. 1.5 grams, 4 grams)
   const weightRegex = /(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|grams)\b/gi;
-  const matches = [...descLower.matchAll(weightRegex)];
+  const singleMatches = [...descLower.matchAll(weightRegex)];
+  for (const match of singleMatches) {
+    allWeights.push(parseFloat(match[1]));
+  }
   
-  if (matches.length > 0) {
-    const weights = matches.map(m => parseFloat(m[1]));
-    const minW = Math.min(...weights);
-    const maxW = Math.max(...weights);
+  if (allWeights.length > 0) {
+    const minW = Math.min(...allWeights);
+    const maxW = Math.max(...allWeights);
     
     if (minW !== maxW) {
       updates.minWeightGrams = minW;
