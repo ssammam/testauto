@@ -73,6 +73,15 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
     }
 
     if (product.priceCalculationType === 'range') {
+      if (product.rangeCategory === 'mangalya_chains') {
+        const d = new Date();
+        const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
+        const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+        const goldRate = rates?.goldRate22k ? `₹${rates.goldRate22k.toLocaleString('en-IN')}` : 'available upon request';
+
+        return `Namaste, ${name},\n\nThank you for your interest in our jewellery collection!\n\nMaking Charges: 0%\nWastage:10%\n\nThe price of 1 gram 22kt Gold is ${goldRate} as on ${dateStr}.\nStarting Range for Mangalya Chains are from 12gms to 50 gms. Final price is based on the billing date's gold rate & ornament weight.\n\n✅ BIS Hallmarked & Certified\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that particular product.`;
+      }
+
       let rangeText = "";
       if (product.rangeCategory === 'rings') {
         rangeText = "Rings: ₹5,000 onwards";

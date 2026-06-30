@@ -194,6 +194,7 @@ export const productReelType = defineType({
           { title: 'Rings', value: 'rings' },
           { title: 'Bracelets / Bangles', value: 'bracelets' },
           { title: 'Long Chains', value: 'long_chains' },
+          { title: 'Mangalya Chains', value: 'mangalya_chains' },
         ],
       },
       hidden: ({ document }) => document?.priceCalculationType !== 'range',
