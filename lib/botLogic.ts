@@ -37,6 +37,65 @@ async function getRates() {
   return rates;
 }
 
+export function extractProductInfo(desc: string, currentCategory: string = "") {
+  const descLower = (desc || "").toLowerCase();
+  let updates: any = {};
+  
+  const karatMatch = descLower.match(/(22k|18k|24k)/i);
+  if (karatMatch) {
+    const k = karatMatch[1].toLowerCase();
+    if (k === '18k') updates.materialType = 'gold18k';
+    else if (k === '22k') updates.materialType = 'gold22k';
+    else if (k === '24k') updates.materialType = 'gold24k';
+  } else if (descLower.includes('silver')) {
+    updates.materialType = 'silver';
+  }
+
+  const cats = ['ring', 'chain', 'bangle', 'bracelet', 'necklace', 'earring', 'pendant', 'choker', 'mangalsutra'];
+  for (const cat of cats) {
+    if (descLower.includes(cat)) {
+      updates.category = cat + (cat.endsWith('s') ? '' : 's');
+      break;
+    }
+  }
+
+  const rangeMatch = descLower.match(/(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*(?:g|gm|gms|grams)?\s*(?:-|to)\s*(\d+(?:\.\d+)?)\s*(?:g|gm|gms|grams)\b/i);
+  if (rangeMatch) {
+    updates.minWeightGrams = parseFloat(rangeMatch[1]);
+    updates.maxWeightGrams = parseFloat(rangeMatch[2]);
+    updates.priceCalculationType = 'range';
+    return updates;
+  }
+
+  const weightRegex = /(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*(?:g|gm|gms|grams)\b/gi;
+  const matches = [...descLower.matchAll(weightRegex)];
+  
+  if (matches.length > 0) {
+    const weights = matches.map(m => parseFloat(m[1]));
+    const minW = Math.min(...weights);
+    const maxW = Math.max(...weights);
+    
+    if (minW !== maxW) {
+      updates.minWeightGrams = minW;
+      updates.maxWeightGrams = maxW;
+      updates.priceCalculationType = 'range';
+    } else {
+      updates.weightGrams = minW;
+      updates.priceCalculationType = 'normal';
+    }
+    return updates;
+  }
+
+  if (updates.category || currentCategory) {
+    updates.priceCalculationType = 'range';
+    return updates;
+  }
+
+  updates.status = 'draft';
+  updates.notes = 'Needs Manual Review - No weight or category detected from post caption.';
+  return updates;
+}
+
 async function getProduct(mediaId: string, title: string | null = null) {
   if (productCache.has(mediaId)) {
     const cached = productCache.get(mediaId)!;
@@ -62,6 +121,13 @@ async function getProduct(mediaId: string, title: string | null = null) {
   }
 
   const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId || reelId == $cleanMediaId || fbPostId == $cleanMediaId || sku match $mediaId || sku match $cleanMediaId || (shortcode != null && shortcode == $shortcode) || (fbPostId != null && fbPostId match $fbExtractedId) || (description != null && $title != null && description match $title))][0]`, { mediaId, cleanMediaId, shortcode: shortcode || '', fbExtractedId: fbExtractedId || '', title: title || '' });
+  
+  if (product && !product.weightGrams && !product.minWeightGrams && product.status !== 'draft') {
+    const extracted = extractProductInfo(product.description || "", product.category || "");
+    Object.assign(product, extracted);
+    writeClient.patch(product._id).set(extracted).commit().catch(console.error);
+  }
+
   productCache.set(mediaId, { data: product, expiresAt: Date.now() + CACHE_TTL_MS });
   return product;
 }
@@ -72,12 +138,8 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       return "This beautiful piece has already been sold! Please DM us to check for similar designs or to place a custom order. We are RH Jewellers Kengeri.";
     }
 
-    if (product.publishedAt) {
-      const pubDate = new Date(product.publishedAt);
-      const thresholdDate = new Date("2026-06-30T00:00:00Z");
-      if (pubDate < thresholdDate) {
-        return `Namaste, ${name}! To give you the exact price, could you please share the reel, reply directly to the story, or comment on the post of the specific jewelry piece you're interested in? We are RH Jewellers Kengeri.\n\nOur team will check the details and get back to you with the exact live price!\n\n*(Note: Please avoid sending screenshots for price checks. Images are only used if you want to place a custom jewelry order.)*`;
-      }
+    if (product.status === 'draft' && product.notes?.includes('Manual Review')) {
+      return `Namaste, ${name}! To give you the exact price, could you please share the reel, reply directly to the story, or comment on the post of the specific jewelry piece you're interested in? We are RH Jewellers Kengeri.\n\nOur team will check the details and get back to you with the exact live price!\n\n*(Note: Please avoid sending screenshots for price checks. Images are only used if you want to place a custom jewelry order.)*`;
     }
 
     const isUnpricedNormal = product.priceCalculationType === 'normal' && !product.isPriceLocked && (!product.weightGrams || product.weightGrams <= 0);

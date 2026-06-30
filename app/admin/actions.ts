@@ -2,6 +2,7 @@
 
 import { writeClient } from '@/sanity/lib/client';
 import { revalidatePath } from 'next/cache';
+import { extractProductInfo } from '@/lib/botLogic';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -140,6 +141,8 @@ export async function syncInstagramPosts() {
           
           existingIgIds.set(post.id, { _id: existingFbDoc._id, reelId: post.id, fbPostId: matchedFbPostId, shortcode, postedOn: 'both' });
         } else {
+          const extracted = extractProductInfo(post.caption || "");
+          
           await writeClient.create({
             _type: 'productReel',
             postedOn,
@@ -148,14 +151,20 @@ export async function syncInstagramPosts() {
             shortcode,
             name: 'Post ' + post.id.substring(0, 5),
             description: post.caption || '',
-            materialType: 'gold22k', // default
-            weightGrams: 0,
             makingChargeType: 'percentage', // default
             makingCharges: 0,
             thumbnailUrl: post.thumbnail_url || post.media_url || '',
             publishedAt: post.timestamp || new Date().toISOString(),
-            status: 'active',
             isPriceLocked: false,
+            // Extracted values override defaults
+            materialType: extracted.materialType || 'gold22k',
+            category: extracted.category || 'rings',
+            weightGrams: extracted.weightGrams || 0,
+            minWeightGrams: extracted.minWeightGrams,
+            maxWeightGrams: extracted.maxWeightGrams,
+            priceCalculationType: extracted.priceCalculationType || 'normal',
+            status: extracted.status === 'draft' ? 'draft' : 'active',
+            notes: extracted.notes || '',
           });
           addedCount++;
           
@@ -229,20 +238,28 @@ export async function syncInstagramPosts() {
           existingFbIds.set(fbPost.id, { _id: matchedExistingDoc._id, fbPostId: fbPost.id, postedOn: 'both' });
         } else {
           // No match found, create a new document
+          const extracted = extractProductInfo(fbPost.message || "");
+          
           await writeClient.create({
             _type: 'productReel',
             postedOn: 'facebook',
             fbPostId: fbPost.id,
             name: 'FB Post ' + fbPost.id.substring(0, 5),
             description: fbPost.message || '',
-            materialType: 'gold22k', // default
-            weightGrams: 0,
             makingChargeType: 'percentage',
             makingCharges: 0,
             thumbnailUrl: fbPost.full_picture || '',
             publishedAt: fbPost.created_time || new Date().toISOString(),
-            status: 'active',
             isPriceLocked: false,
+            // Extracted values override defaults
+            materialType: extracted.materialType || 'gold22k',
+            category: extracted.category || 'rings',
+            weightGrams: extracted.weightGrams || 0,
+            minWeightGrams: extracted.minWeightGrams,
+            maxWeightGrams: extracted.maxWeightGrams,
+            priceCalculationType: extracted.priceCalculationType || 'normal',
+            status: extracted.status === 'draft' ? 'draft' : 'active',
+            notes: extracted.notes || '',
           });
           addedCount++;
           existingFbIds.set(fbPost.id, { _id: 'new', fbPostId: fbPost.id, postedOn: 'facebook' });

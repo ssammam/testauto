@@ -187,17 +187,18 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
-                      <select name="category" defaultValue={post.category || 'rings'} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
-                        <option value="rings">Rings</option>
-                        <option value="chains">Chains</option>
-                        <option value="bangles">Bangles</option>
-                        <option value="necklaces">Necklaces</option>
-                        <option value="earrings">Earrings</option>
-                        <option value="pendants">Pendants</option>
-                        <option value="bridal">Bridal</option>
-                        <option value="temple">Temple Jewellery</option>
-                        <option value="silver">Silver</option>
-                      </select>
+                      <input name="category" list="category-options" defaultValue={post.category || 'rings'} placeholder="e.g. rings, vanki, haram" className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
+                      <datalist id="category-options">
+                        <option value="rings" />
+                        <option value="chains" />
+                        <option value="bangles" />
+                        <option value="necklaces" />
+                        <option value="earrings" />
+                        <option value="pendants" />
+                        <option value="bridal" />
+                        <option value="temple" />
+                        <option value="silver" />
+                      </datalist>
                     </div>
                   </div>
 
