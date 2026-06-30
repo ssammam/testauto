@@ -244,7 +244,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
   }
 
   // 2.5 DETECT LOCATION INTENT
-  if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address")) {
+  if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address") || messageText.includes("place")) {
     await dmText(senderId, "📍 Our store is located at: 312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Maps: https://maps.app.goo.gl/U1shqm6TSeJFTNvi6\n\nWe'd love to host you! Could you please share your phone number so we can book a VIP store visit for you? 💛", config);
     await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'General', status: 'New', reportedInDailyEmail: false });
     return;
@@ -391,26 +391,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
     return;
   }
 
-  if (commentText.includes("location") || commentText.includes("where") || commentText.includes("address")) {
-    if (commentText.includes("dm") || commentText.includes("message requests")) return; 
-    
-    if (commentId) {
-      const replyMsg = commenterUsername
-        ? `@${commenterUsername} ✨ Our store is in Bangalore! I have sent you a DM with the exact address and map link. 💛`
-        : `✨ Our store is in Bangalore! I have sent you a DM with the exact address and map link. 💛`;
-      await replyToComment(commentId, replyMsg, config);
-      
-      try {
-        const dmMessage = "📍 Our flagship store is located at: 123 Gold Market Road, Bangalore.\n\nWe'd love to host you! Could you please share your phone number here in the chat so we can book a VIP store visit for you? 💛";
-        await sendDM({ comment_id: commentId }, { message: { text: dmMessage } }, config);
-        
-        await writeClient.create({ _type: 'lead', instagramUsername: commenterUsername, name: commenterUsername, queryType: 'General', status: 'New', reportedInDailyEmail: false });
-      } catch (err) {
-        console.error(`[${config.platform} handleComment] Location DM to commenter skipped:`, err);
-      }
-    }
-    return;
-  }
+
 }
 
 async function sendWhatsAppMessage(to: string, text: string, config: BotConfig) {
@@ -464,7 +445,7 @@ export async function processWhatsAppMessage(message: any, contacts: any[], conf
   }
 
   // 2.5 DETECT LOCATION INTENT
-  if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address")) {
+  if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address") || messageText.includes("place")) {
     await sendWhatsAppMessage(senderId, "📍 Our store is located at: 312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Maps: https://maps.app.goo.gl/U1shqm6TSeJFTNvi6\n\nWe'd love to host you! Could you please tell us when you plan to visit so we can book a VIP store visit for you? 💛", config);
     await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'General', status: 'New', reportedInDailyEmail: false });
     return;
