@@ -160,9 +160,13 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       const d = new Date();
       const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
       const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
-      const goldRate = rates?.goldRate22k ? `₹${rates.goldRate22k.toLocaleString('en-IN')}` : 'available upon request';
+      const isSilver = product.materialType === 'silver';
+      const rateText = isSilver ? "Silver" : "22kt Gold";
+      const rateVal = isSilver
+        ? (rates?.silverRate ? `₹${(rates.silverRate / 1000).toLocaleString('en-IN')}` : 'available upon request')
+        : (rates?.goldRate22k ? `₹${rates.goldRate22k.toLocaleString('en-IN')}` : 'available upon request');
 
-      return `Namaste, ${name},\n\nThank you for your interest in our ${categoryName} collection!\n\nMaking Charges: ${mc}%\nWastage: ${wst}%\n\nThe price of 1 gram 22kt Gold is ${goldRate} as on ${dateStr}.\nStarting Range for ${categoryName} are from ${minW}gms to ${maxW} gms. Final price is based on the billing date's gold rate & ornament weight.\n\nBIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for... We are RH Jewellers Kengeri.`;
+      return `Namaste, ${name},\n\nThank you for your interest in our ${categoryName} collection!\n\nMaking Charges: ${mc}%\nWastage: ${wst}%\n\nThe price of 1 gram ${rateText} is ${rateVal} as on ${dateStr}.\nStarting Range for ${categoryName} are from ${minW}gms to ${maxW} gms. Final price is based on the billing date's live rate & ornament weight.\n\nBIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for... We are RH Jewellers Kengeri.`;
     }
 
     let totalPrice = 0;
@@ -207,13 +211,17 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
     const d = new Date();
     const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
     const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
-    const goldRate22k = rates?.goldRate22k ? `₹${rates.goldRate22k.toLocaleString('en-IN')}` : 'available upon request';
+    const isSilver = product.materialType === 'silver';
+    const rateText = isSilver ? "Silver" : "22kt Gold";
+    const rateVal = isSilver
+      ? (rates?.silverRate ? `₹${(rates.silverRate / 1000).toLocaleString('en-IN')}` : 'available upon request')
+      : (rates?.goldRate22k ? `₹${rates.goldRate22k.toLocaleString('en-IN')}` : 'available upon request');
 
     const isDefaultName = /^((FB )?Post \d+)$/i.test(product.name?.trim() || '');
     const catLabel = product.category ? product.category.charAt(0).toUpperCase() + product.category.slice(1) : 'Jewellery';
     const titleLine = isDefaultName ? `${catLabel}` : `${product.name}`;
 
-    return `Namaste, ${name},\n\nThank you for your interest in our ${catLabel} collection!\n\nMaking Charges: ${product.makingCharges || 0}%\nWastage: ${product.wastage !== undefined ? product.wastage : 10}%\n\nThe price of 1 gram 22kt Gold is ${goldRate22k} as on ${dateStr}.\n\n${titleLine}\n${product.materialType === 'silver' ? 'Silver' : 'Hallmarked Gold'}\nWeight: ${product.weightGrams}g\nTotal Price: ₹${totalPrice.toLocaleString('en-IN')}\n${product.isPriceLocked ? '*(Incl. GST)*\n' : ''}\nBIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that particular product. We are RH Jewellers Kengeri.`;
+    return `Namaste, ${name},\n\nThank you for your interest in our ${catLabel} collection!\n\nMaking Charges: ${product.makingCharges || 0}%\nWastage: ${product.wastage !== undefined ? product.wastage : 10}%\n\nThe price of 1 gram ${rateText} is ${rateVal} as on ${dateStr}.\n\n${titleLine}\n${isSilver ? 'Silver' : 'Hallmarked Gold'}\nWeight: ${product.weightGrams}g\nTotal Price: ₹${totalPrice.toLocaleString('en-IN')}\n${product.isPriceLocked ? '*(Incl. GST)*\n' : ''}\nBIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that particular product. We are RH Jewellers Kengeri.`;
   }
   
   return `Namaste, ${name}! To give you the exact price, could you please share the reel, reply directly to the story, or comment on the post of the specific jewelry piece you're interested in? We are RH Jewellers Kengeri.\n\nOur team will check the details and get back to you with the exact live price!\n\n*(Note: Please avoid sending screenshots for price checks. Images are only used if you want to place a custom jewelry order.)*`;
