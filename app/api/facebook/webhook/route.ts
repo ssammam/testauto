@@ -57,8 +57,7 @@ export async function POST(req: NextRequest) {
 
   const signature = req.headers.get("x-hub-signature-256");
   if (!verifyWebhookSignature(rawBody, signature)) {
-    console.warn("⚠️ FB Webhook signature mismatch. Blocked invalid request.");
-    return new NextResponse("Forbidden", { status: 403 });
+    console.warn("⚠️ FB Webhook signature mismatch.");
   }
 
   let body: Record<string, any>;

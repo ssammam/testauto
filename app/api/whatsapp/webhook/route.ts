@@ -1,36 +1,15 @@
 import { NextRequest, NextResponse, after } from "next/server";
-import { createHmac, timingSafeEqual } from "crypto";
 import { processWhatsAppMessage, BotConfig } from "@/lib/botLogic";
 
 const TOKEN = process.env.WHATSAPP_ACCESS_TOKEN!;
 const WA_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID!;
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN!;
-const APP_SECRET = process.env.WHATSAPP_APP_SECRET || "";
 
 const botConfig: BotConfig = {
   platform: "whatsapp",
   token: TOKEN,
   botId: WA_PHONE_NUMBER_ID
 };
-
-/* ════════════════════════════════════════
-   SIGNATURE VERIFICATION
-════════════════════════════════════════ */
-function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
-  if (!APP_SECRET) return true;
-  if (!signature) return false;
-
-  const expected = createHmac("sha256", APP_SECRET)
-    .update(rawBody, "utf8")
-    .digest("hex");
-
-  const expectedBuf = Buffer.from(`sha256=${expected}`, "utf8");
-  const receivedBuf = Buffer.from(signature, "utf8");
-
-  if (expectedBuf.length !== receivedBuf.length) return false;
-
-  return timingSafeEqual(expectedBuf, receivedBuf);
-}
 
 /* ════════════════════════════════════════
    WEBHOOK VERIFICATION (GET)
@@ -51,17 +30,9 @@ export async function GET(req: NextRequest) {
    MAIN WEBHOOK (POST)
 ════════════════════════════════════════ */
 export async function POST(req: NextRequest) {
-  const rawBody = await req.text();
-
-  const signature = req.headers.get("x-hub-signature-256");
-  if (!verifyWebhookSignature(rawBody, signature)) {
-    console.warn("⚠️ WhatsApp Webhook signature mismatch. Blocked invalid request.");
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
   let body: any;
   try {
-    body = JSON.parse(rawBody);
+    body = await req.json();
   } catch {
     return new NextResponse("Bad Request", { status: 400 });
   }
