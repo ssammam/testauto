@@ -504,8 +504,8 @@ export async function processComment(change: Record<string, any>, config: BotCon
   if (commentText.includes("location") || commentText.includes("where") || commentText.includes("address") || commentText.includes("place") || commentText.includes("landmark")) {
     if (commentId) {
       const replyMsg = commenterUsername
-        ? `@${commenterUsername} Namaste! We have sent our store location and details to your DM. We are RH Jewellers Kengeri.`
-        : `Namaste! We have sent our store location and details to your DM. We are RH Jewellers Kengeri.`;
+        ? `@${commenterUsername} Thank you for your interest! Please check your inbox. Regards RH Jewellers, Kengeri.`
+        : `Thank you for your interest! Please check your inbox. Regards RH Jewellers, Kengeri.`;
       await replyToComment(commentId, replyMsg, config);
 
       const dmMessage = `Namaste, ${commenterFirstName || "there"}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`;
@@ -527,11 +527,25 @@ export async function processComment(change: Record<string, any>, config: BotCon
     return;
   }
 
-  if (commentText.includes("rate") || commentText.includes("18k") || commentText.includes("22k") || commentText.includes("24k") || commentText.includes("silver") || commentText.includes("daily price") || commentText.includes("today price") || commentText.includes("today's price") || commentText.includes("todays price")) {
+  if (commentText.includes("making charges") || commentText.includes("making charge") || commentText.includes("mc") || commentText.includes("wastage") || commentText.includes("wasteage")) {
     if (commentId) {
       const replyMsg = commenterUsername
-        ? `@${commenterUsername} Namaste! We have sent today's live rates to your DM. We are RH Jewellers Kengeri.`
-        : `Namaste! We have sent today's live rates to your DM. We are RH Jewellers Kengeri.`;
+        ? `@${commenterUsername} Thank you for your interest! Please check your inbox. Regards RH Jewellers, Kengeri.`
+        : `Thank you for your interest! Please check your inbox. Regards RH Jewellers, Kengeri.`;
+      await replyToComment(commentId, replyMsg, config);
+
+      const dmMessage = `Namaste, ${commenterFirstName || "there"}\n\nWastage is 10%, but Making Charges are 0! We don't charge for making! Visit us to buy jewelry.\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe are RH Jewellers Kengeri.`;
+
+      await sendDM({ comment_id: commentId }, { message: { text: dmMessage } }, config);
+    }
+    return;
+  }
+
+  if (commentText.includes("rate") || commentText.includes("gold rate") || commentText.includes("18k") || commentText.includes("22k") || commentText.includes("24k") || commentText.includes("silver") || commentText.includes("daily price") || commentText.includes("today price") || commentText.includes("today's price") || commentText.includes("todays price")) {
+    if (commentId) {
+      const replyMsg = commenterUsername
+        ? `@${commenterUsername} Thank you for your interest! Please check your inbox. Regards RH Jewellers, Kengeri.`
+        : `Thank you for your interest! Please check your inbox. Regards RH Jewellers, Kengeri.`;
       await replyToComment(commentId, replyMsg, config);
 
       const rates = await getRates();
@@ -557,7 +571,8 @@ export async function processComment(change: Record<string, any>, config: BotCon
 
     if (commentId) {
       const replyMsg = commenterUsername
-        ? `@${commenterUsername} Thank you for your interest! Please check your inbox.Regards RH Jewellers, Kengeri.;
+        ? `@${commenterUsername} Thank you for your interest! Please check your inbox. Regards RH Jewellers, Kengeri.`
+        : `Thank you for your interest! Please check your inbox. Regards RH Jewellers, Kengeri.`;
       await replyToComment(commentId, replyMsg, config);
       
       try {
@@ -568,12 +583,11 @@ export async function processComment(change: Record<string, any>, config: BotCon
         
         const rates = await getRates();
         
-        let dmMessage = `Namaste, ${ commenterFirstName || "there"
-    } !You asked for the price on our recent post.We are RH Jewellers Kengeri.`;
+        let dmMessage = `Namaste, ${commenterFirstName || "there"}! You asked for the price on our recent post. We are RH Jewellers Kengeri.`;
         if (product) {
           dmMessage = buildProductDmMessage(product, rates, commenterFirstName || "there");
         } else {
-          dmMessage = `Namaste, ${ commenterFirstName || "there" }, \n\nThis is our product.We will get back to you as soon as possible.Please wait while we update the price.We are RH Jewellers Kengeri.`;
+          dmMessage = `Namaste, ${commenterFirstName || "there"},\n\nThis is our product. We will get back to you as soon as possible. Please wait while we update the price. We are RH Jewellers Kengeri.`;
         }
         
         await sendDM({ comment_id: commentId }, { message: { text: dmMessage } }, config);
