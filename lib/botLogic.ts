@@ -31,7 +31,7 @@ async function getRates() {
 export function extractProductInfo(desc: string, currentCategory: string = "") {
   const descLower = (desc || "").toLowerCase();
   let updates: any = {};
-  
+
   const karatMatch = descLower.match(/(22k|18k|24k)/i);
   if (karatMatch) {
     const k = karatMatch[1].toLowerCase();
@@ -66,11 +66,11 @@ export function extractProductInfo(desc: string, currentCategory: string = "") {
   for (const match of singleMatches) {
     allWeights.push(parseFloat(match[1]));
   }
-  
+
   if (allWeights.length > 0) {
     const minW = Math.min(...allWeights);
     const maxW = Math.max(...allWeights);
-    
+
     if (minW !== maxW) {
       updates.minWeightGrams = minW;
       updates.maxWeightGrams = maxW;
@@ -95,19 +95,19 @@ async function getProduct(mediaId: string, title: string | null = null) {
 
   let fbExtractedId = null;
   if (mediaId.includes('facebook.com') || mediaId.includes('fb.watch') || mediaId.includes('fb.com')) {
-     const pfbidMatch = mediaId.match(/pfbid[a-zA-Z0-9]+/);
-     if (pfbidMatch) {
-       fbExtractedId = pfbidMatch[0];
-     } else {
-       const fbMatch = mediaId.match(/\d{10,}/);
-       if (fbMatch) {
-         fbExtractedId = fbMatch[0];
-       }
-     }
+    const pfbidMatch = mediaId.match(/pfbid[a-zA-Z0-9]+/);
+    if (pfbidMatch) {
+      fbExtractedId = pfbidMatch[0];
+    } else {
+      const fbMatch = mediaId.match(/\d{10,}/);
+      if (fbMatch) {
+        fbExtractedId = fbMatch[0];
+      }
+    }
   }
 
   const product = await client.fetch(`*[_type == "productReel" && (reelId == $mediaId || fbPostId == $mediaId || reelId == $cleanMediaId || fbPostId == $cleanMediaId || sku match $mediaId || sku match $cleanMediaId || (shortcode != null && shortcode == $shortcode) || (fbPostId != null && fbPostId match $fbExtractedId) || (description != null && $title != null && description match $title))][0]`, { mediaId, cleanMediaId, shortcode: shortcode || '', fbExtractedId: fbExtractedId || '', title: title || '' });
-  
+
   if (product && !product.weightGrams && !product.minWeightGrams && product.status !== 'draft') {
     const extracted = extractProductInfo(product.description || "", product.category || "");
     Object.assign(product, extracted);
@@ -132,7 +132,7 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       const d = new Date();
       const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
       const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
-      
+
       let rateReply = `Here are our live rates as of ${dateStr}:\n`;
       if (rates?.goldRate24k) rateReply += `\n🔸 24K Gold: ₹${rates.goldRate24k.toLocaleString('en-IN')} per gram`;
       if (rates?.goldRate22k) rateReply += `\n🔸 22K Gold: ₹${rates.goldRate22k.toLocaleString('en-IN')} per gram`;
@@ -157,7 +157,7 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       const rateVal = isSilver
         ? (rates?.silverRate ? `₹${rates.silverRate.toLocaleString('en-IN')}` : 'available upon request')
         : (rates?.goldRate22k ? `₹${rates.goldRate22k.toLocaleString('en-IN')}` : 'available upon request');
-        
+
       const footerText = `✅ BIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that product. We are RH Jewellers Kengeri.\n\n⚠️ Disclaimer:\nFinal price is based on the billing date's gold rate & ornament weight.`;
 
       return `Namaste, ${name},\n\nThank you for your interest in our ${categoryName} collection!\n\nMaking Charges: ${mc}%\nWastage: ${wst}%\n\nThe price of ${rateText} is ${rateVal} as on ${dateStr}.\nStarting Range for ${categoryName} are from ${minW}gms to ${maxW} gms.\n\n${footerText}`;
@@ -185,7 +185,7 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       rawGoldValue = weight * ratePerGram;
       const wastagePercent = product.wastage !== undefined ? product.wastage : 10;
       wastageTotal = rawGoldValue * (wastagePercent / 100);
-      
+
       const makingCharges = product.makingCharges || 0;
       if (product.makingChargeType === 'percentage') {
         makingChargeTotal = rawGoldValue * (makingCharges / 100);
@@ -214,18 +214,18 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
     const isDefaultName = /^((FB )?Post \d+)$/i.test(product.name?.trim() || '');
     const catLabel = product.category ? product.category.charAt(0).toUpperCase() + product.category.slice(1) : 'Jewellery';
     const titleLine = isDefaultName ? `${catLabel}` : `${product.name}`;
-    
+
     const footerText = `✅ BIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that product. We are RH Jewellers Kengeri.\n\n⚠️ Disclaimer:\nFinal price is based on the billing date's gold rate & ornament weight.`;
 
     return `Namaste, ${name},\n\nThank you for your interest in our ${catLabel} collection!\n\nMaking Charges: ${product.makingCharges || 0}%\nWastage: ${product.wastage !== undefined ? product.wastage : 10}%\n\nThe price of ${rateText} is ${rateVal} as on ${dateStr}.\n\n${titleLine}\n${isSilver ? 'Silver' : 'Hallmarked Gold'}\nWeight: ${product.weightGrams}g\nTotal Price: ₹${totalPrice.toLocaleString('en-IN')}\n${product.isPriceLocked ? '*(Incl. GST)*\n\n' : '\n'}${footerText}`;
   }
-  
+
   return `Namaste, ${name}! To give you the exact price, could you please share the reel, reply directly to the story, or comment on the post of the specific jewelry piece you're interested in? We are RH Jewellers Kengeri.\n\nOur team will check the details and get back to you with the exact live price!\n\n*(Note: Please avoid sending screenshots for price checks. Images are only used if you want to place a custom jewelry order.)*`;
 }
 
 async function sendDM(recipient: { id: string } | { comment_id: string }, body: Record<string, unknown>, config: BotConfig) {
   const baseUrl = config.token.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
-  
+
   const payload: any = { recipient, ...body };
   if (config.platform === "facebook") {
     // Private replies (using comment_id) do not use messaging_type
@@ -250,7 +250,7 @@ async function sendDM(recipient: { id: string } | { comment_id: string }, body: 
 
 async function replyToComment(commentId: string, message: string, config: BotConfig) {
   const baseUrl = config.token.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
-  
+
   const params = new URLSearchParams();
   params.append("message", message);
   params.append("access_token", config.token);
@@ -297,7 +297,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
 
   // Get sender profile (with caching to prevent Meta API rate limits)
   let profile: any = {};
-  
+
   const fields = config.platform === "facebook" ? "name,first_name,last_name,profile_pic" : "name,username,profile_pic";
   try {
     const profileRes = await fetch(`${baseUrl}/v25.0/${senderId}?fields=${fields}&access_token=${config.token}`);
@@ -354,13 +354,13 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     const d = new Date();
     const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
     const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
-    
+
     let rateReply = `Namaste, ${name}!\n\nHere are our live rates as of ${dateStr}:\n`;
     if (rates?.goldRate24k) rateReply += `\n🔸 24K Gold: ₹${rates.goldRate24k.toLocaleString('en-IN')} per gram`;
     if (rates?.goldRate22k) rateReply += `\n🔸 22K Gold: ₹${rates.goldRate22k.toLocaleString('en-IN')} per gram`;
     if (rates?.goldRate18k) rateReply += `\n🔸 18K Gold: ₹${rates.goldRate18k.toLocaleString('en-IN')} per gram`;
     if (rates?.silverRate) rateReply += `\n🔸 Silver: ₹${rates.silverRate.toLocaleString('en-IN')} per kg`;
-    
+
     rateReply += `\n\nIs there a specific jewelry design you are looking for? We are RH Jewellers Kengeri.`;
     await dmText(senderId, rateReply, config);
     return;
@@ -375,7 +375,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     let extractedDate = messageText.includes("day") ? rawMessageText : "Date not specified";
 
     await dmText(senderId, `Thank you! We have noted your appointment details. We'll be waiting for you!\n\n📍 Location: 312 Kuvempu Road, Kengeri, Bengaluru\nMap: https://share.google/wfAwpsnVcIuq32IIx\nContact: 9620741404\n\nWe are RH Jewellers Kengeri.`, config);
-    
+
     // Check if we have a recent lead for this user and update it with the phone/date
     const existingLead = await client.fetch(`*[_type == "lead" && instagramUsername == $username] | order(_createdAt desc)[0]`, { username });
     if (existingLead) {
@@ -407,7 +407,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     } else if (config.platform === "facebook" && (attachment.type === 'fallback' || attachment.type === 'share' || attachment.type === 'video' || attachment.type === 'post' || attachment.type === 'reel' || attachment.type === 'ig_reel')) {
       let fbPayloadId = attachment.payload?.video_id || attachment.payload?.reel_video_id || attachment.payload?.post_id || attachment.payload?.reel_id || attachment.payload?.id || attachment.payload?.url;
       if (attachment.payload?.title) fbTitleFallback = attachment.payload.title;
-      
+
       if (fbPayloadId) {
         fbPayloadId = String(fbPayloadId);
         if (!fbPayloadId.includes("_") && !fbPayloadId.includes("http")) {
@@ -427,7 +427,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     }
 
     const rates = await getRates();
-    
+
     let dmMessage = "";
     if (product) {
       dmMessage = buildProductDmMessage(product, rates, name);
@@ -460,16 +460,16 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     await dmText(senderId, dmMessage, config);
 
     if (dmMessage.includes("We will get back to you as soon as possible. Please wait while we update the price.")) {
-      await writeClient.create({ 
-        _type: 'lead', 
-        instagramUsername: username, 
-        name: name, 
-        queryType: 'Pending Price', 
-        status: 'Pending Reply', 
+      await writeClient.create({
+        _type: 'lead',
+        instagramUsername: username,
+        name: name,
+        queryType: 'Pending Price',
+        status: 'Pending Reply',
         platform: config.platform,
         senderId: senderId,
         mediaId: mediaId,
-        reportedInDailyEmail: false 
+        reportedInDailyEmail: false
       });
     }
 
@@ -507,21 +507,21 @@ export async function processComment(change: Record<string, any>, config: BotCon
         ? `@${commenterUsername} Namaste! We have sent our store location and details to your DM. We are RH Jewellers Kengeri.`
         : `Namaste! We have sent our store location and details to your DM. We are RH Jewellers Kengeri.`;
       await replyToComment(commentId, replyMsg, config);
-      
+
       const dmMessage = `Namaste, ${commenterFirstName || "there"}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`;
-      
+
       await sendDM({ comment_id: commentId }, { message: { text: dmMessage } }, config);
-      
-      await writeClient.create({ 
-        _type: 'lead', 
-        instagramUsername: commenterUsername || commenterFirstName, 
-        name: commenterFirstName || "there", 
-        queryType: 'Store Visit', 
-        status: 'New', 
-        platform: config.platform, 
-        senderId: value.from?.id, 
-        commentId: commentId, 
-        reportedInDailyEmail: false 
+
+      await writeClient.create({
+        _type: 'lead',
+        instagramUsername: commenterUsername || commenterFirstName,
+        name: commenterFirstName || "there",
+        queryType: 'Store Visit',
+        status: 'New',
+        platform: config.platform,
+        senderId: value.from?.id,
+        commentId: commentId,
+        reportedInDailyEmail: false
       });
     }
     return;
@@ -533,20 +533,20 @@ export async function processComment(change: Record<string, any>, config: BotCon
         ? `@${commenterUsername} Namaste! We have sent today's live rates to your DM. We are RH Jewellers Kengeri.`
         : `Namaste! We have sent today's live rates to your DM. We are RH Jewellers Kengeri.`;
       await replyToComment(commentId, replyMsg, config);
-      
+
       const rates = await getRates();
       const d = new Date();
       const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
       const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
-      
+
       let rateReply = `Namaste, ${commenterFirstName || "there"}!\n\nHere are our live rates as of ${dateStr}:\n`;
       if (rates?.goldRate24k) rateReply += `\n🔸 24K Gold: ₹${rates.goldRate24k.toLocaleString('en-IN')} per gram`;
       if (rates?.goldRate22k) rateReply += `\n🔸 22K Gold: ₹${rates.goldRate22k.toLocaleString('en-IN')} per gram`;
       if (rates?.goldRate18k) rateReply += `\n🔸 18K Gold: ₹${rates.goldRate18k.toLocaleString('en-IN')} per gram`;
       if (rates?.silverRate) rateReply += `\n🔸 Silver: ₹${rates.silverRate.toLocaleString('en-IN')} per kg`;
-      
+
       rateReply += `\n\nIs there a specific jewelry design you are looking for? We are RH Jewellers Kengeri.`;
-      
+
       await sendDM({ comment_id: commentId }, { message: { text: rateReply } }, config);
     }
     return;
@@ -557,8 +557,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
 
     if (commentId) {
       const replyMsg = commenterUsername
-        ? `@${commenterUsername} We have sent the complete price breakdown to your DM! Please check your message requests. We are RH Jewellers Kengeri.`
-        : `We have sent the complete price breakdown to your DM! Please check your message requests. We are RH Jewellers Kengeri.`;
+        ? `@${commenterUsername} Thank you for your interest! Please check your inbox.Regards RH Jewellers, Kengeri.;
       await replyToComment(commentId, replyMsg, config);
       
       try {
@@ -569,11 +568,12 @@ export async function processComment(change: Record<string, any>, config: BotCon
         
         const rates = await getRates();
         
-        let dmMessage = `Namaste, ${commenterFirstName || "there"}! You asked for the price on our recent post. We are RH Jewellers Kengeri.`;
+        let dmMessage = `Namaste, ${ commenterFirstName || "there"
+    } !You asked for the price on our recent post.We are RH Jewellers Kengeri.`;
         if (product) {
           dmMessage = buildProductDmMessage(product, rates, commenterFirstName || "there");
         } else {
-          dmMessage = `Namaste, ${commenterFirstName || "there"},\n\nThis is our product. We will get back to you as soon as possible. Please wait while we update the price. We are RH Jewellers Kengeri.`;
+          dmMessage = `Namaste, ${ commenterFirstName || "there" }, \n\nThis is our product.We will get back to you as soon as possible.Please wait while we update the price.We are RH Jewellers Kengeri.`;
         }
         
         await sendDM({ comment_id: commentId }, { message: { text: dmMessage } }, config);
@@ -593,7 +593,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
           });
         }
       } catch (err) {
-        console.error(`[${config.platform} handleComment] DM to commenter skipped:`, err);
+        console.error(`[${ config.platform } handleComment] DM to commenter skipped: `, err);
       }
     }
     return;
@@ -607,9 +607,9 @@ async function sendWhatsAppMessage(to: string, text: string, config: BotConfig) 
     `https://graph.facebook.com/v20.0/${config.botId}/messages`,
     {
       method: "POST",
-      headers: {
+        headers: {
         "Authorization": `Bearer ${config.token}`,
-        "Content-Type": "application/json",
+          "Content-Type": "application/json",
       },
       body: JSON.stringify({
         messaging_product: "whatsapp",
@@ -620,182 +620,182 @@ async function sendWhatsAppMessage(to: string, text: string, config: BotConfig) 
       }),
     }
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    console.error(`[WhatsApp] DM send error:`, JSON.stringify(err));
-  }
-}
-
-export async function processWhatsAppMessage(message: any, contacts: any[], config: BotConfig) {
-  const senderId = message.from; // WhatsApp phone number
-  if (!senderId) return;
-
-  const rawMessageText = message.type === 'text' ? (message.text?.body || "").trim() : "";
-  const messageText = rawMessageText.toLowerCase();
-
-  // ANTI-LOOP
-  if (messageText.includes("estimated price") || messageText.includes("our team gets back to you") || messageText.includes("what can we help you with")) {
-    return;
-  }
-
-  console.log(`[WhatsApp handleMessage] Received message from ${senderId}: "${rawMessageText}"`);
-
-  // Extract name from contacts if available
-  const contact = contacts.find((c: any) => c.wa_id === senderId);
-  const name = contact?.profile?.name || "there";
-  const username = senderId; // Phone number acts as username for WhatsApp leads
-
-  // 2. DETECT BOOKING INTENT
-  if (messageText.includes("visit") || messageText.includes("tomorrow") || messageText.includes("today") || messageText.includes("book")) {
-    await sendWhatsAppMessage(senderId, "Would you like to schedule a visit? Please provide a date and confirm your phone number so our team can get ready for you! We are RH Jewellers Kengeri.", config);
-    await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'Store Visit', status: 'New', reportedInDailyEmail: false });
-    return;
-  }
-
-  // 2.5 DETECT LOCATION INTENT
-  if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address") || messageText.includes("place") || messageText.includes("landmark")) {
-    await sendWhatsAppMessage(senderId, `Namaste, ${name}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`, config);
-    await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'Store Visit', status: 'New', reportedInDailyEmail: false });
-    return;
-  }
-  
-  // 3. DETECT PHONE NUMBER OR DATE (since senderId is already a phone number, they might just share a date)
-  const phoneRegex = /\b\d{10}\b/;
-  if (phoneRegex.test(messageText) || messageText.includes("monday") || messageText.includes("tuesday") || messageText.includes("wednesday") || messageText.includes("thursday") || messageText.includes("friday") || messageText.includes("saturday") || messageText.includes("sunday")) {
-    let extractedDate = messageText.includes("day") ? rawMessageText : "Date not specified";
-
-    await sendWhatsAppMessage(senderId, `Thank you! We have noted your appointment details. We'll be waiting for you!\n\n📍 Location: 312 Kuvempu Road, Kengeri, Bengaluru\nMap: https://share.google/wfAwpsnVcIuq32IIx\nContact: 9620741404\n\nWe are RH Jewellers Kengeri.`, config);
-    
-    const existingLead = await client.fetch(`*[_type == "lead" && instagramUsername == $username] | order(_createdAt desc)[0]`, { username });
-    if (existingLead) {
-      const updatePhone = phoneRegex.test(messageText) ? messageText.match(phoneRegex)?.[0] : senderId;
-      await writeClient.patch(existingLead._id).set({ phoneNumber: updatePhone, visitDate: extractedDate }).commit();
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error(`[WhatsApp] DM send error:`, JSON.stringify(err));
     }
-    return;
   }
 
-  // 4. CHECK DYNAMIC FAQs
-  const faqs = await getFaqs();
-  for (const faq of faqs) {
-    if (faq.keyword && messageText.includes(faq.keyword.toLowerCase())) {
-      const responseText = faq.response.replace(/First Name/gi, name).replace(/\{name\}/gi, name);
-      await sendWhatsAppMessage(senderId, responseText, config);
+  export async function processWhatsAppMessage(message: any, contacts: any[], config: BotConfig) {
+    const senderId = message.from; // WhatsApp phone number
+    if (!senderId) return;
+
+    const rawMessageText = message.type === 'text' ? (message.text?.body || "").trim() : "";
+    const messageText = rawMessageText.toLowerCase();
+
+    // ANTI-LOOP
+    if (messageText.includes("estimated price") || messageText.includes("our team gets back to you") || messageText.includes("what can we help you with")) {
+      return;
+    }
+
+    console.log(`[WhatsApp handleMessage] Received message from ${senderId}: "${rawMessageText}"`);
+
+    // Extract name from contacts if available
+    const contact = contacts.find((c: any) => c.wa_id === senderId);
+    const name = contact?.profile?.name || "there";
+    const username = senderId; // Phone number acts as username for WhatsApp leads
+
+    // 2. DETECT BOOKING INTENT
+    if (messageText.includes("visit") || messageText.includes("tomorrow") || messageText.includes("today") || messageText.includes("book")) {
+      await sendWhatsAppMessage(senderId, "Would you like to schedule a visit? Please provide a date and confirm your phone number so our team can get ready for you! We are RH Jewellers Kengeri.", config);
+      await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'Store Visit', status: 'New', reportedInDailyEmail: false });
+      return;
+    }
+
+    // 2.5 DETECT LOCATION INTENT
+    if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address") || messageText.includes("place") || messageText.includes("landmark")) {
+      await sendWhatsAppMessage(senderId, `Namaste, ${name}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`, config);
+      await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'Store Visit', status: 'New', reportedInDailyEmail: false });
+      return;
+    }
+
+    // 3. DETECT PHONE NUMBER OR DATE (since senderId is already a phone number, they might just share a date)
+    const phoneRegex = /\b\d{10}\b/;
+    if (phoneRegex.test(messageText) || messageText.includes("monday") || messageText.includes("tuesday") || messageText.includes("wednesday") || messageText.includes("thursday") || messageText.includes("friday") || messageText.includes("saturday") || messageText.includes("sunday")) {
+      let extractedDate = messageText.includes("day") ? rawMessageText : "Date not specified";
+
+      await sendWhatsAppMessage(senderId, `Thank you! We have noted your appointment details. We'll be waiting for you!\n\n📍 Location: 312 Kuvempu Road, Kengeri, Bengaluru\nMap: https://share.google/wfAwpsnVcIuq32IIx\nContact: 9620741404\n\nWe are RH Jewellers Kengeri.`, config);
+
+      const existingLead = await client.fetch(`*[_type == "lead" && instagramUsername == $username] | order(_createdAt desc)[0]`, { username });
+      if (existingLead) {
+        const updatePhone = phoneRegex.test(messageText) ? messageText.match(phoneRegex)?.[0] : senderId;
+        await writeClient.patch(existingLead._id).set({ phoneNumber: updatePhone, visitDate: extractedDate }).commit();
+      }
+      return;
+    }
+
+    // 4. CHECK DYNAMIC FAQs
+    const faqs = await getFaqs();
+    for (const faq of faqs) {
+      if (faq.keyword && messageText.includes(faq.keyword.toLowerCase())) {
+        const responseText = faq.response.replace(/First Name/gi, name).replace(/\{name\}/gi, name);
+        await sendWhatsAppMessage(senderId, responseText, config);
+        return;
+      }
+    }
+
+    // 5. PRICE CHECK (Unified for WhatsApp)
+    let mediaId: string | null = null;
+    const hasImage = message.type === 'image';
+
+    if (message.type === "interactive" && message.interactive?.type === "product") {
+      mediaId = message.interactive.product?.product_retailer_id || message.interactive.product?.product_id;
+    }
+
+    if (!mediaId) {
+      const urlMatch = rawMessageText.match(/(?:instagram\.com\/(?:p|reel)\/|facebook\.com\/.*[?&]v=)([a-zA-Z0-9_-]+)/);
+      if (urlMatch) {
+        mediaId = urlMatch[1];
+      } else if (messageText.includes("price") || messageText.includes("cost")) {
+        const words = rawMessageText.split(/\s+/);
+        const possibleSku = words.find((w: string) => /[a-zA-Z]/.test(w) && /[0-9]/.test(w) && w.length >= 3);
+        if (possibleSku) mediaId = possibleSku;
+      }
+    }
+
+    if (messageText.includes("price") || messageText.includes("cost") || mediaId || hasImage) {
+      let product = null;
+      if (mediaId) {
+        product = await getProduct(mediaId);
+      }
+
+      const rates = await getRates();
+      let dmMessage = "";
+
+      if (product) {
+        dmMessage = buildProductDmMessage(product, rates, name);
+      } else if (mediaId || hasImage) {
+        dmMessage = `Namaste, ${name},\n\nThis is our product. We will get back to you as soon as possible. Please wait while we update the price. We are RH Jewellers Kengeri.`;
+      } else {
+        dmMessage = `Namaste, ${name}! To give you the exact price, could you please share the reel link, product image, or the SKU of the specific jewelry piece you're interested in?\n\nOur team will check the details and get back to you with the exact live price! We are RH Jewellers Kengeri.`;
+      }
+
+      await sendWhatsAppMessage(senderId, dmMessage, config);
+
+      if (dmMessage.includes("We will get back to you as soon as possible. Please wait while we update the price.")) {
+        await writeClient.create({
+          _type: 'lead',
+          instagramUsername: username,
+          name: name,
+          queryType: 'Pending Price',
+          status: 'Pending Reply',
+          platform: 'whatsapp',
+          senderId: senderId,
+          mediaId: mediaId,
+          reportedInDailyEmail: false
+        });
+      }
+
       return;
     }
   }
 
-  // 5. PRICE CHECK (Unified for WhatsApp)
-  let mediaId: string | null = null;
-  const hasImage = message.type === 'image';
+  export async function sendPendingReplies(product: any) {
+    const leads = await client.fetch(`*[_type == "lead" && status == "Pending Reply" && mediaId != null]`);
 
-  if (message.type === "interactive" && message.interactive?.type === "product") {
-    mediaId = message.interactive.product?.product_retailer_id || message.interactive.product?.product_id;
-  }
-  
-  if (!mediaId) {
-    const urlMatch = rawMessageText.match(/(?:instagram\.com\/(?:p|reel)\/|facebook\.com\/.*[?&]v=)([a-zA-Z0-9_-]+)/);
-    if (urlMatch) {
-      mediaId = urlMatch[1];
-    } else if (messageText.includes("price") || messageText.includes("cost")) {
-      const words = rawMessageText.split(/\s+/);
-      const possibleSku = words.find((w: string) => /[a-zA-Z]/.test(w) && /[0-9]/.test(w) && w.length >= 3);
-      if (possibleSku) mediaId = possibleSku;
-    }
-  }
+    const matchingLeads = leads.filter((lead: any) => {
+      return lead.mediaId === product.reelId ||
+        lead.mediaId === product.fbPostId ||
+        lead.mediaId === product.shortcode ||
+        (product.sku && lead.mediaId === product.sku) ||
+        (lead.mediaId.includes('_') && (lead.mediaId.split('_')[1] === product.reelId || lead.mediaId.split('_')[1] === product.fbPostId));
+    });
 
-  if (messageText.includes("price") || messageText.includes("cost") || mediaId || hasImage) {
-    let product = null;
-    if (mediaId) {
-      product = await getProduct(mediaId);
-    }
+    if (matchingLeads.length === 0) return;
 
     const rates = await getRates();
-    let dmMessage = "";
 
-    if (product) {
-      dmMessage = buildProductDmMessage(product, rates, name);
-    } else if (mediaId || hasImage) {
-      dmMessage = `Namaste, ${name},\n\nThis is our product. We will get back to you as soon as possible. Please wait while we update the price. We are RH Jewellers Kengeri.`;
-    } else {
-      dmMessage = `Namaste, ${name}! To give you the exact price, could you please share the reel link, product image, or the SKU of the specific jewelry piece you're interested in?\n\nOur team will check the details and get back to you with the exact live price! We are RH Jewellers Kengeri.`;
-    }
+    for (const lead of matchingLeads) {
+      const dmMessage = buildProductDmMessage(product, rates, lead.name);
 
-    await sendWhatsAppMessage(senderId, dmMessage, config);
+      if (dmMessage.includes("We will get back to you as soon as possible")) continue;
 
-    if (dmMessage.includes("We will get back to you as soon as possible. Please wait while we update the price.")) {
-      await writeClient.create({ 
-        _type: 'lead', 
-        instagramUsername: username, 
-        name: name, 
-        queryType: 'Pending Price', 
-        status: 'Pending Reply', 
-        platform: 'whatsapp',
-        senderId: senderId,
-        mediaId: mediaId,
-        reportedInDailyEmail: false 
-      });
-    }
+      const config: BotConfig = {
+        platform: lead.platform as 'instagram' | 'facebook' | 'whatsapp',
+        token: lead.platform === 'instagram' ? process.env.INSTAGRAM_PAGE_ACCESS_TOKEN! :
+          lead.platform === 'facebook' ? process.env.FACEBOOK_PAGE_ACCESS_TOKEN! :
+            process.env.WHATSAPP_TOKEN!,
+        botId: lead.platform === 'whatsapp' ? process.env.WHATSAPP_PHONE_NUMBER_ID! :
+          lead.platform === 'facebook' ? process.env.FACEBOOK_PAGE_ID! :
+            process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID!
+      };
 
-    return;
-  }
-}
-
-export async function sendPendingReplies(product: any) {
-  const leads = await client.fetch(`*[_type == "lead" && status == "Pending Reply" && mediaId != null]`);
-  
-  const matchingLeads = leads.filter((lead: any) => {
-    return lead.mediaId === product.reelId || 
-           lead.mediaId === product.fbPostId || 
-           lead.mediaId === product.shortcode || 
-           (product.sku && lead.mediaId === product.sku) ||
-           (lead.mediaId.includes('_') && (lead.mediaId.split('_')[1] === product.reelId || lead.mediaId.split('_')[1] === product.fbPostId));
-  });
-
-  if (matchingLeads.length === 0) return;
-
-  const rates = await getRates();
-
-  for (const lead of matchingLeads) {
-    const dmMessage = buildProductDmMessage(product, rates, lead.name);
-
-    if (dmMessage.includes("We will get back to you as soon as possible")) continue;
-
-    const config: BotConfig = {
-      platform: lead.platform as 'instagram' | 'facebook' | 'whatsapp',
-      token: lead.platform === 'instagram' ? process.env.INSTAGRAM_PAGE_ACCESS_TOKEN! : 
-             lead.platform === 'facebook' ? process.env.FACEBOOK_PAGE_ACCESS_TOKEN! : 
-             process.env.WHATSAPP_TOKEN!,
-      botId: lead.platform === 'whatsapp' ? process.env.WHATSAPP_PHONE_NUMBER_ID! : 
-             lead.platform === 'facebook' ? process.env.FACEBOOK_PAGE_ID! :
-             process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID!
-    };
-
-    try {
-      if (lead.platform === 'whatsapp') {
-        // We'd need sendWhatsAppMessage, which is not exported, so let's use fetch directly
-        await fetch(`https://graph.facebook.com/v20.0/${config.botId}/messages`, {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${config.token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: lead.senderId, type: "text", text: { body: dmMessage } })
-        });
-      } else if (lead.commentId) {
-        // Send DM for comment
-        const baseUrl = config.token.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
-        await fetch(`${baseUrl}/v25.0/me/messages?access_token=${config.token}`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipient: { comment_id: lead.commentId }, message: { text: dmMessage } })
-        });
-      } else if (lead.senderId) {
-        // Send DM
-        const baseUrl = config.token.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
-        await fetch(`${baseUrl}/v25.0/me/messages?access_token=${config.token}`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipient: { id: lead.senderId }, message: { text: dmMessage }, messaging_type: config.platform === 'facebook' ? "RESPONSE" : undefined })
-        });
+      try {
+        if (lead.platform === 'whatsapp') {
+          // We'd need sendWhatsAppMessage, which is not exported, so let's use fetch directly
+          await fetch(`https://graph.facebook.com/v20.0/${config.botId}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${config.token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: lead.senderId, type: "text", text: { body: dmMessage } })
+          });
+        } else if (lead.commentId) {
+          // Send DM for comment
+          const baseUrl = config.token.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
+          await fetch(`${baseUrl}/v25.0/me/messages?access_token=${config.token}`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ recipient: { comment_id: lead.commentId }, message: { text: dmMessage } })
+          });
+        } else if (lead.senderId) {
+          // Send DM
+          const baseUrl = config.token.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
+          await fetch(`${baseUrl}/v25.0/me/messages?access_token=${config.token}`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ recipient: { id: lead.senderId }, message: { text: dmMessage }, messaging_type: config.platform === 'facebook' ? "RESPONSE" : undefined })
+          });
+        }
+        await writeClient.patch(lead._id).set({ status: 'Contacted' }).commit();
+      } catch (e) {
+        console.error("Failed to send pending reply for lead", lead._id, e);
       }
-      await writeClient.patch(lead._id).set({ status: 'Contacted' }).commit();
-    } catch (e) {
-      console.error("Failed to send pending reply for lead", lead._id, e);
     }
   }
-}
