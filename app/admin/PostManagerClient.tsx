@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { syncInstagramPosts, updateProductReel } from './actions';
-import { RefreshCw, Camera, Save, CheckCircle2, Search, Calendar, Image as ImageIcon } from 'lucide-react';
+import { RefreshCw, Camera, Save, CheckCircle2, Search, Calendar, Image as ImageIcon, Download } from 'lucide-react';
 
 const InstagramIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -51,6 +51,55 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
     post.reelId?.includes(searchQuery) ||
     post.sku?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleDownloadWaitingList = () => {
+    const waitingPosts = postsWithPendingCount.filter(post => post.pendingCount > 0 || post.status === 'draft');
+    
+    if (waitingPosts.length === 0) {
+      alert("No posts are currently waiting for details or have pending inquiries.");
+      return;
+    }
+
+    const headers = ['Platform', 'Post ID', 'URL', 'Status', 'Pending Inquiries', 'Current Weight (g)', 'Category', 'Description snippet'];
+    const rows = waitingPosts.map(post => {
+      const platform = post.postedOn || (post.fbPostId ? 'facebook' : 'instagram');
+      const id = post.reelId || post.fbPostId || post.shortcode || '';
+      
+      let url = '';
+      if (platform.includes('instagram')) {
+        url = post.shortcode ? `https://instagram.com/p/${post.shortcode}` : (post.reelId ? `https://instagram.com/reel/${post.reelId}` : '');
+      } else if (platform.includes('facebook')) {
+        url = post.fbPostId ? `https://facebook.com/${post.fbPostId}` : '';
+      }
+      
+      const status = post.status || 'active';
+      const pendingCount = post.pendingCount || 0;
+      const weight = post.weightGrams || '';
+      const category = post.category || '';
+      const desc = (post.description || '').substring(0, 80).replace(/\n/g, ' ').replace(/"/g, '""');
+      
+      return [
+        platform,
+        `"${id}"`,
+        `"${url}"`,
+        status,
+        pendingCount,
+        weight,
+        `"${category}"`,
+        `"${desc}"`
+      ].join(',');
+    });
+    
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `waiting_list_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -108,6 +157,13 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
           {syncMessage && (
             <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-md">{syncMessage}</span>
           )}
+          <button 
+            onClick={handleDownloadWaitingList}
+            className="bg-white border border-[#d62976] text-[#d62976] px-4 py-2 rounded-xl font-medium flex items-center gap-2 hover:bg-[#fcecf3] transition-colors shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+            Download Waiting List
+          </button>
           <button 
             onClick={handleSync}
             disabled={isSyncing}
