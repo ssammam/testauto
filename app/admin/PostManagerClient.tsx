@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { syncInstagramPosts, updateProductReel } from './actions';
-import { RefreshCw, Camera, Save, CheckCircle2, Search, Calendar, Image as ImageIcon } from 'lucide-react';
+import { RefreshCw, Camera, Save, CheckCircle2, Search, Calendar, Image as ImageIcon, Download } from 'lucide-react';
 
 const InstagramIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -67,6 +67,31 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
     setTimeout(() => setSyncMessage(''), 4000);
   };
 
+  const downloadCsv = () => {
+    const headers = ['Post ID', 'Name', 'Platform', 'Status', 'Category', 'Material', 'Weight/Range', 'Waiting Leads', 'Date Published', 'Caption'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredPosts.map(post => [
+        `"${post.reelId || post.fbPostId || ''}"`,
+        `"${(post.name || '').replace(/"/g, '""')}"`,
+        `"${post.postedOn || 'instagram'}"`,
+        `"${post.status || ''}"`,
+        `"${post.category || ''}"`,
+        `"${post.materialType || ''}"`,
+        `"${post.priceCalculationType === 'range' ? `${post.minWeightGrams || 0}-${post.maxWeightGrams || 0}g` : `${post.weightGrams || 0}g`}"`,
+        `"${post.pendingCount || 0}"`,
+        `"${post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : ''}"`,
+        `"${(post.description || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `rh_jewellers_posts_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>, id: string) => {
     e.preventDefault();
     setIsSaving(true);
@@ -105,17 +130,26 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
               className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#d62976]/20 focus:border-[#d62976] w-full sm:w-64"
             />
           </div>
-          {syncMessage && (
-            <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-md">{syncMessage}</span>
-          )}
-          <button 
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors disabled:opacity-50 shadow-sm"
-          >
-            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Syncing...' : 'Sync Recent Posts'}
-          </button>
+          <div className="flex items-center gap-3">
+            {syncMessage && (
+              <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-md">{syncMessage}</span>
+            )}
+            <button 
+              onClick={downloadCsv}
+              className="bg-white border border-[#7c6a46] text-[#7c6a46] px-4 py-2 rounded-xl font-medium flex items-center gap-2 hover:bg-[#7c6a46]/5 transition-colors shadow-sm"
+            >
+              <Download className="w-4 h-4" />
+              Export Posts CSV
+            </button>
+            <button 
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors disabled:opacity-50 shadow-sm"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Syncing...' : 'Sync Recent Posts'}
+            </button>
+          </div>
         </div>
       </div>
 

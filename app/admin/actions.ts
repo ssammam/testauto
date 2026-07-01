@@ -104,7 +104,7 @@ export async function syncInstagramPosts() {
     // ---------------------------------
 
     // Fetch existing reels
-    const existingReels = await writeClient.fetch(`*[_type == "productReel"]{_id, reelId, fbPostId, postedOn, description}`);
+    const existingReels = await writeClient.fetch(`*[_type == "productReel"]{_id, reelId, fbPostId, postedOn, description, status, materialType, category}`);
     const existingIgIds = new Map(existingReels.filter((r: any) => r.reelId).map((r: any) => [r.reelId, r]));
     const existingFbIds = new Map(existingReels.filter((r: any) => r.fbPostId).map((r: any) => [r.fbPostId, r]));
 
@@ -180,6 +180,32 @@ export async function syncInstagramPosts() {
         const existing: any = existingIgIds.get(post.id);
         const shortcode = post.permalink ? post.permalink.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/)?.[1] : undefined;
         
+        if (existing.status === 'draft' && post.caption && existing.description !== post.caption) {
+           const extracted = extractProductInfo(post.caption);
+           const hasNormalWeight = extracted.priceCalculationType === 'normal' && extracted.weightGrams > 0;
+           const hasRangeWeight = extracted.priceCalculationType === 'range' && extracted.minWeightGrams > 0 && extracted.maxWeightGrams > 0;
+           
+           if (hasNormalWeight || hasRangeWeight) {
+             const updatedDoc = await writeClient.patch(existing._id).set({
+               description: post.caption,
+               status: 'active',
+               materialType: extracted.materialType || existing.materialType,
+               category: extracted.category || existing.category,
+               weightGrams: extracted.weightGrams || 0,
+               minWeightGrams: extracted.minWeightGrams,
+               maxWeightGrams: extracted.maxWeightGrams,
+               priceCalculationType: extracted.priceCalculationType,
+               notes: ''
+             }).commit();
+             const fullUpdatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id: existing._id });
+             await sendPendingReplies(fullUpdatedProduct);
+             addedCount++;
+           } else {
+             await writeClient.patch(existing._id).set({ description: post.caption }).commit();
+             existing.description = post.caption;
+           }
+        }
+
         if (!existing.shortcode && shortcode) {
            await writeClient.patch(existing._id).set({ shortcode }).commit();
            existing.shortcode = shortcode;
@@ -195,12 +221,13 @@ export async function syncInstagramPosts() {
           
           if (match) {
             if (!existingFbIds.has(match.id)) {
-              // Found a match for an old post! Update it.
               await writeClient.patch(existing._id).set({
                 fbPostId: match.id,
                 postedOn: 'both'
               }).commit();
               existingFbIds.set(match.id, { _id: existing._id, reelId: post.id, fbPostId: match.id, postedOn: 'both' });
+              const fullUpdatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id: existing._id });
+              await sendPendingReplies(fullUpdatedProduct);
             } else {
               // Both IG and FB exist separately! Merge them by attaching FB id to IG doc, and deleting FB doc.
               const fbDoc: any = existingFbIds.get(match.id);
@@ -211,6 +238,8 @@ export async function syncInstagramPosts() {
                 }).commit();
                 await writeClient.delete(fbDoc._id); // delete standalone FB doc
                 existingFbIds.set(match.id, { _id: existing._id, reelId: post.id, fbPostId: match.id, postedOn: 'both' });
+                const fullUpdatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id: existing._id });
+                await sendPendingReplies(fullUpdatedProduct);
               }
             }
           }
@@ -230,13 +259,44 @@ export async function syncInstagramPosts() {
             return fbMessageNormalized === rDesc || fbMessageNormalized.includes(rDesc) || rDesc.includes(fbMessageNormalized);
           });
         }
-
         if (matchedExistingDoc) {
-          // Update the existing document to link the Facebook post
-          await writeClient.patch(matchedExistingDoc._id).set({
-            fbPostId: fbPost.id,
-            postedOn: 'both'
-          }).commit();
+          // Check if caption changed on FB for an existing draft
+          if (matchedExistingDoc.status === 'draft' && fbPost.message && matchedExistingDoc.description !== fbPost.message) {
+             const extracted = extractProductInfo(fbPost.message);
+             const hasNormalWeight = extracted.priceCalculationType === 'normal' && extracted.weightGrams > 0;
+             const hasRangeWeight = extracted.priceCalculationType === 'range' && extracted.minWeightGrams > 0 && extracted.maxWeightGrams > 0;
+             
+             if (hasNormalWeight || hasRangeWeight) {
+               const updatedDoc = await writeClient.patch(matchedExistingDoc._id).set({
+                 description: fbPost.message,
+                 status: 'active',
+                 fbPostId: fbPost.id,
+                 postedOn: 'both',
+                 materialType: extracted.materialType || matchedExistingDoc.materialType,
+                 category: extracted.category || matchedExistingDoc.category,
+                 weightGrams: extracted.weightGrams || 0,
+                 minWeightGrams: extracted.minWeightGrams,
+                 maxWeightGrams: extracted.maxWeightGrams,
+                 priceCalculationType: extracted.priceCalculationType,
+                 notes: ''
+               }).commit();
+               const fullUpdatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id: matchedExistingDoc._id });
+               await sendPendingReplies(fullUpdatedProduct);
+               addedCount++;
+             } else {
+               await writeClient.patch(matchedExistingDoc._id).set({
+                 fbPostId: fbPost.id,
+                 postedOn: 'both',
+                 description: fbPost.message
+               }).commit();
+             }
+          } else {
+            await writeClient.patch(matchedExistingDoc._id).set({
+              fbPostId: fbPost.id,
+              postedOn: 'both'
+            }).commit();
+          }
+          
           existingFbIds.set(fbPost.id, { _id: matchedExistingDoc._id, fbPostId: fbPost.id, postedOn: 'both' });
         } else {
           // No match found, create a new document

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { updateLeadStatus } from './actions';
-import { Phone, User, AtSign, Calendar, MapPin, Sparkles, Folder, Clock } from 'lucide-react';
+import { Phone, User, AtSign, Calendar, MapPin, Sparkles, Folder, Clock, Download } from 'lucide-react';
 
 export default function LeadManagerClient({ initialLeads }: { initialLeads: any[] }) {
   const [leads, setLeads] = useState(initialLeads);
@@ -15,6 +15,28 @@ export default function LeadManagerClient({ initialLeads }: { initialLeads: any[
       setLeads(leads.map(lead => lead._id === id ? { ...lead, status: newStatus } : lead));
     }
     setUpdating(null);
+  };
+
+  const downloadCsv = () => {
+    const headers = ['Name', 'Instagram Username', 'Phone Number', 'Inquiry Type', 'Status', 'Date Created', 'Visit Date'];
+    const csvContent = [
+      headers.join(','),
+      ...leads.map(lead => [
+        `"${lead.name || ''}"`,
+        `"${lead.instagramUsername || ''}"`,
+        `"${lead.phoneNumber || ''}"`,
+        `"${lead.queryType || ''}"`,
+        `"${lead.status || ''}"`,
+        `"${new Date(lead._createdAt).toLocaleString()}"`,
+        `"${lead.visitDate || ''}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `rh_jewellers_leads_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
   };
 
   const getStatusColor = (status: string) => {
@@ -43,8 +65,10 @@ export default function LeadManagerClient({ initialLeads }: { initialLeads: any[
           </h2>
           <p className="text-sm text-gray-300 mt-1">{desc}</p>
         </div>
-        <div className="bg-white/10 px-4 py-2 rounded-lg text-sm font-medium backdrop-blur-md">
-          {data.length} Leads
+        <div className="flex items-center gap-4">
+          <div className="bg-white/10 px-4 py-2 rounded-lg text-sm font-medium backdrop-blur-md">
+            {data.length} Leads
+          </div>
         </div>
       </div>
 
@@ -141,6 +165,16 @@ export default function LeadManagerClient({ initialLeads }: { initialLeads: any[
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end mb-4">
+        <button 
+          onClick={downloadCsv}
+          className="flex items-center gap-2 bg-[#7c6a46] hover:bg-[#635438] text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm"
+        >
+          <Download className="w-4 h-4" />
+          Export All Leads to CSV
+        </button>
+      </div>
+
       {renderTable(
         "Incomers", 
         "Customers who have requested a store visit and provided a phone number.", 

@@ -136,7 +136,17 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
     const isUnpricedRange = product.priceCalculationType === 'range' && (!product.minWeightGrams || !product.maxWeightGrams);
     const isDraft = product.status === 'draft' && product.notes?.includes('Manual Review');
 
-    if (isUnpricedNormal || isUnpricedLocked || isUnpricedRange || isDraft) {
+    let ratePerGram = 0;
+    if (product.materialType === 'gold9k') ratePerGram = rates?.goldRate9k || 0;
+    else if (product.materialType === 'gold18k') ratePerGram = rates?.goldRate18k || 0;
+    else if (product.materialType === 'gold22k') ratePerGram = rates?.goldRate22k || 0;
+    else if (product.materialType === 'gold24k') ratePerGram = rates?.goldRate24k || 0;
+    else if (product.materialType === 'silver') ratePerGram = (rates?.silverRate || 0) / 1000;
+    if (!ratePerGram) ratePerGram = rates?.goldRate22k || 0;
+
+    const isMissingRate = !product.isPriceLocked && ratePerGram === 0;
+
+    if (isUnpricedNormal || isUnpricedLocked || isUnpricedRange || isDraft || isMissingRate) {
       const d = new Date();
       const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
       const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
@@ -184,15 +194,6 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
     if (product.isPriceLocked && product.lockedPrice) {
       totalPrice = product.lockedPrice;
     } else {
-      let ratePerGram = 0;
-      if (product.materialType === 'gold9k') ratePerGram = rates?.goldRate9k || 0;
-      else if (product.materialType === 'gold18k') ratePerGram = rates?.goldRate18k || 0;
-      else if (product.materialType === 'gold22k') ratePerGram = rates?.goldRate22k || 0;
-      else if (product.materialType === 'gold24k') ratePerGram = rates?.goldRate24k || 0;
-      else if (product.materialType === 'silver') ratePerGram = (rates?.silverRate || 0) / 1000;
-
-      if (!ratePerGram) ratePerGram = rates?.goldRate22k || 0;
-
       const weight = product.weightGrams || 0;
       rawGoldValue = weight * ratePerGram;
       const wastagePercent = product.wastage !== undefined ? product.wastage : 10;
