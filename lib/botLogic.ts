@@ -123,16 +123,23 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       return "This beautiful piece has already been sold! Please DM us to check for similar designs or to place a custom order. We are RH Jewellers Kengeri.";
     }
 
-    if (product.status === 'draft' && product.notes?.includes('Manual Review')) {
-      return `Namaste, ${name}! To give you the exact price, could you please share the reel, reply directly to the story, or comment on the post of the specific jewelry piece you're interested in? We are RH Jewellers Kengeri.\n\nOur team will check the details and get back to you with the exact live price!\n\n*(Note: Please avoid sending screenshots for price checks. Images are only used if you want to place a custom jewelry order.)*`;
-    }
-
     const isUnpricedNormal = product.priceCalculationType === 'normal' && !product.isPriceLocked && (!product.weightGrams || product.weightGrams <= 0);
     const isUnpricedLocked = product.priceCalculationType === 'normal' && product.isPriceLocked && (!product.lockedPrice || product.lockedPrice <= 0);
     const isUnpricedRange = product.priceCalculationType === 'range' && (!product.minWeightGrams || !product.maxWeightGrams);
+    const isDraft = product.status === 'draft' && product.notes?.includes('Manual Review');
 
-    if (isUnpricedNormal || isUnpricedLocked || isUnpricedRange) {
-      return `Namaste, ${name},\n\nThis is our product. We will get back to you as soon as possible. Please wait while we update the price. We are RH Jewellers Kengeri.`;
+    if (isUnpricedNormal || isUnpricedLocked || isUnpricedRange || isDraft) {
+      const d = new Date();
+      const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
+      const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+      
+      let rateReply = `Here are our live rates as of ${dateStr}:\n`;
+      if (rates?.goldRate24k) rateReply += `\n🔸 24K Gold: ₹${rates.goldRate24k.toLocaleString('en-IN')} per gram`;
+      if (rates?.goldRate22k) rateReply += `\n🔸 22K Gold: ₹${rates.goldRate22k.toLocaleString('en-IN')} per gram`;
+      if (rates?.goldRate18k) rateReply += `\n🔸 18K Gold: ₹${rates.goldRate18k.toLocaleString('en-IN')} per gram`;
+      if (rates?.silverRate) rateReply += `\n🔸 Silver: ₹${rates.silverRate.toLocaleString('en-IN')} per kg`;
+
+      return `Namaste, ${name},\n\nThis is our product.\n\n${rateReply}\n\nWe will get back to you as soon as possible. Please wait while we update the price. We are RH Jewellers Kengeri.`;
     }
 
     if (product.priceCalculationType === 'range') {
@@ -146,12 +153,14 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
       const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
       const isSilver = product.materialType === 'silver';
-      const rateText = isSilver ? "Silver" : "22kt Gold";
+      const rateText = isSilver ? "1 kg Silver" : "1 gram 22kt Gold";
       const rateVal = isSilver
-        ? (rates?.silverRate ? `₹${(rates.silverRate / 1000).toLocaleString('en-IN')}` : 'available upon request')
+        ? (rates?.silverRate ? `₹${rates.silverRate.toLocaleString('en-IN')}` : 'available upon request')
         : (rates?.goldRate22k ? `₹${rates.goldRate22k.toLocaleString('en-IN')}` : 'available upon request');
+        
+      const footerText = `✅ BIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that product. We are RH Jewellers Kengeri.\n\n⚠️ Disclaimer:\nFinal price is based on the billing date's gold rate & ornament weight.`;
 
-      return `Namaste, ${name},\n\nThank you for your interest in our ${categoryName} collection!\n\nMaking Charges: ${mc}%\nWastage: ${wst}%\n\nThe price of 1 gram ${rateText} is ${rateVal} as on ${dateStr}.\nStarting Range for ${categoryName} are from ${minW}gms to ${maxW} gms. Final price is based on the billing date's live rate & ornament weight.\n\nBIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for... We are RH Jewellers Kengeri.`;
+      return `Namaste, ${name},\n\nThank you for your interest in our ${categoryName} collection!\n\nMaking Charges: ${mc}%\nWastage: ${wst}%\n\nThe price of ${rateText} is ${rateVal} as on ${dateStr}.\nStarting Range for ${categoryName} are from ${minW}gms to ${maxW} gms.\n\n${footerText}`;
     }
 
     let totalPrice = 0;
@@ -197,16 +206,18 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
     const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
     const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
     const isSilver = product.materialType === 'silver';
-    const rateText = isSilver ? "Silver" : "22kt Gold";
+    const rateText = isSilver ? "1 kg Silver" : "1 gram 22kt Gold";
     const rateVal = isSilver
-      ? (rates?.silverRate ? `₹${(rates.silverRate / 1000).toLocaleString('en-IN')}` : 'available upon request')
+      ? (rates?.silverRate ? `₹${rates.silverRate.toLocaleString('en-IN')}` : 'available upon request')
       : (rates?.goldRate22k ? `₹${rates.goldRate22k.toLocaleString('en-IN')}` : 'available upon request');
 
     const isDefaultName = /^((FB )?Post \d+)$/i.test(product.name?.trim() || '');
     const catLabel = product.category ? product.category.charAt(0).toUpperCase() + product.category.slice(1) : 'Jewellery';
     const titleLine = isDefaultName ? `${catLabel}` : `${product.name}`;
+    
+    const footerText = `✅ BIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that product. We are RH Jewellers Kengeri.\n\n⚠️ Disclaimer:\nFinal price is based on the billing date's gold rate & ornament weight.`;
 
-    return `Namaste, ${name},\n\nThank you for your interest in our ${catLabel} collection!\n\nMaking Charges: ${product.makingCharges || 0}%\nWastage: ${product.wastage !== undefined ? product.wastage : 10}%\n\nThe price of 1 gram ${rateText} is ${rateVal} as on ${dateStr}.\n\n${titleLine}\n${isSilver ? 'Silver' : 'Hallmarked Gold'}\nWeight: ${product.weightGrams}g\nTotal Price: ₹${totalPrice.toLocaleString('en-IN')}\n${product.isPriceLocked ? '*(Incl. GST)*\n' : ''}\nBIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that particular product. We are RH Jewellers Kengeri.`;
+    return `Namaste, ${name},\n\nThank you for your interest in our ${catLabel} collection!\n\nMaking Charges: ${product.makingCharges || 0}%\nWastage: ${product.wastage !== undefined ? product.wastage : 10}%\n\nThe price of ${rateText} is ${rateVal} as on ${dateStr}.\n\n${titleLine}\n${isSilver ? 'Silver' : 'Hallmarked Gold'}\nWeight: ${product.weightGrams}g\nTotal Price: ₹${totalPrice.toLocaleString('en-IN')}\n${product.isPriceLocked ? '*(Incl. GST)*\n\n' : '\n'}${footerText}`;
   }
   
   return `Namaste, ${name}! To give you the exact price, could you please share the reel, reply directly to the story, or comment on the post of the specific jewelry piece you're interested in? We are RH Jewellers Kengeri.\n\nOur team will check the details and get back to you with the exact live price!\n\n*(Note: Please avoid sending screenshots for price checks. Images are only used if you want to place a custom jewelry order.)*`;
@@ -338,7 +349,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
   }
 
   // 2.8 DETECT LIVE GOLD/SILVER RATE QUERY
-  if (messageText.includes("rate") || messageText.includes("18k") || messageText.includes("22k") || messageText.includes("24k") || messageText.includes("silver")) {
+  if (messageText.includes("rate") || messageText.includes("18k") || messageText.includes("22k") || messageText.includes("24k") || messageText.includes("silver") || messageText.includes("daily price") || messageText.includes("today price") || messageText.includes("today's price") || messageText.includes("todays price")) {
     const rates = await getRates();
     const d = new Date();
     const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
@@ -348,7 +359,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     if (rates?.goldRate24k) rateReply += `\n🔸 24K Gold: ₹${rates.goldRate24k.toLocaleString('en-IN')} per gram`;
     if (rates?.goldRate22k) rateReply += `\n🔸 22K Gold: ₹${rates.goldRate22k.toLocaleString('en-IN')} per gram`;
     if (rates?.goldRate18k) rateReply += `\n🔸 18K Gold: ₹${rates.goldRate18k.toLocaleString('en-IN')} per gram`;
-    if (rates?.silverRate) rateReply += `\n🔸 Silver: ₹${(rates.silverRate / 1000).toLocaleString('en-IN')} per gram`;
+    if (rates?.silverRate) rateReply += `\n🔸 Silver: ₹${rates.silverRate.toLocaleString('en-IN')} per kg`;
     
     rateReply += `\n\nIs there a specific jewelry design you are looking for? We are RH Jewellers Kengeri.`;
     await dmText(senderId, rateReply, config);
@@ -471,7 +482,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
   if (!value) return;
 
   if (config.platform === "facebook") {
-    if (value.item !== "comment" || value.verb !== "add") return;
+    if (value.verb !== "add" || !value.comment_id) return;
   }
 
   const commentId = config.platform === "facebook" ? value.comment_id : value.id;
@@ -489,6 +500,57 @@ export async function processComment(change: Record<string, any>, config: BotCon
   if (value.from?.id === config.botId) return;
 
   console.log(`[${config.platform} handleComment] Received comment ${commentId} from ${commenterUsername}: "${commentText}" (mediaId: ${mediaId})`);
+
+  if (commentText.includes("location") || commentText.includes("where") || commentText.includes("address") || commentText.includes("place") || commentText.includes("landmark")) {
+    if (commentId) {
+      const replyMsg = commenterUsername
+        ? `@${commenterUsername} Namaste! We have sent our store location and details to your DM. We are RH Jewellers Kengeri.`
+        : `Namaste! We have sent our store location and details to your DM. We are RH Jewellers Kengeri.`;
+      await replyToComment(commentId, replyMsg, config);
+      
+      const dmMessage = `Namaste, ${commenterFirstName || "there"}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`;
+      
+      await sendDM({ comment_id: commentId }, { message: { text: dmMessage } }, config);
+      
+      await writeClient.create({ 
+        _type: 'lead', 
+        instagramUsername: commenterUsername || commenterFirstName, 
+        name: commenterFirstName || "there", 
+        queryType: 'Store Visit', 
+        status: 'New', 
+        platform: config.platform, 
+        senderId: value.from?.id, 
+        commentId: commentId, 
+        reportedInDailyEmail: false 
+      });
+    }
+    return;
+  }
+
+  if (commentText.includes("rate") || commentText.includes("18k") || commentText.includes("22k") || commentText.includes("24k") || commentText.includes("silver") || commentText.includes("daily price") || commentText.includes("today price") || commentText.includes("today's price") || commentText.includes("todays price")) {
+    if (commentId) {
+      const replyMsg = commenterUsername
+        ? `@${commenterUsername} Namaste! We have sent today's live rates to your DM. We are RH Jewellers Kengeri.`
+        : `Namaste! We have sent today's live rates to your DM. We are RH Jewellers Kengeri.`;
+      await replyToComment(commentId, replyMsg, config);
+      
+      const rates = await getRates();
+      const d = new Date();
+      const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
+      const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+      
+      let rateReply = `Namaste, ${commenterFirstName || "there"}!\n\nHere are our live rates as of ${dateStr}:\n`;
+      if (rates?.goldRate24k) rateReply += `\n🔸 24K Gold: ₹${rates.goldRate24k.toLocaleString('en-IN')} per gram`;
+      if (rates?.goldRate22k) rateReply += `\n🔸 22K Gold: ₹${rates.goldRate22k.toLocaleString('en-IN')} per gram`;
+      if (rates?.goldRate18k) rateReply += `\n🔸 18K Gold: ₹${rates.goldRate18k.toLocaleString('en-IN')} per gram`;
+      if (rates?.silverRate) rateReply += `\n🔸 Silver: ₹${rates.silverRate.toLocaleString('en-IN')} per kg`;
+      
+      rateReply += `\n\nIs there a specific jewelry design you are looking for? We are RH Jewellers Kengeri.`;
+      
+      await sendDM({ comment_id: commentId }, { message: { text: rateReply } }, config);
+    }
+    return;
+  }
 
   if (commentText.includes("price") || /\bpp\b/.test(commentText)) {
     if (commentText.includes("sent to your dm") || commentText.includes("message requests")) return;
@@ -511,7 +573,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
         if (product) {
           dmMessage = buildProductDmMessage(product, rates, commenterFirstName || "there");
         } else {
-          dmMessage = `Namaste, ${commenterFirstName || "there"}! We are currently checking the exact live price for this specific item. Our team will get back to you shortly! We are RH Jewellers Kengeri.`;
+          dmMessage = `Namaste, ${commenterFirstName || "there"},\n\nThis is our product. We will get back to you as soon as possible. Please wait while we update the price. We are RH Jewellers Kengeri.`;
         }
         
         await sendDM({ comment_id: commentId }, { message: { text: dmMessage } }, config);
