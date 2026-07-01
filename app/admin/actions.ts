@@ -2,7 +2,7 @@
 
 import { writeClient } from '@/sanity/lib/client';
 import { revalidatePath } from 'next/cache';
-import { extractProductInfo } from '@/lib/botLogic';
+import { extractProductInfo, sendPendingReplies } from '@/lib/botLogic';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -313,6 +313,11 @@ export async function updateProductReel(id: string, formData: FormData) {
       priceCalculationType,
       rangeCategory
     }).commit();
+
+    if (status !== 'draft') {
+      const updatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id });
+      await sendPendingReplies(updatedProduct);
+    }
 
     revalidatePath('/admin');
     return { success: true };

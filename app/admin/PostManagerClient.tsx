@@ -18,7 +18,7 @@ const FacebookIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export default function PostManagerClient({ initialPosts }: { initialPosts: any[] }) {
+export default function PostManagerClient({ initialPosts, leads }: { initialPosts: any[], leads?: any[] }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
   
@@ -30,7 +30,22 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
   // For Live DM Preview
   const [previewPost, setPreviewPost] = useState<any>(null);
 
-  const filteredPosts = initialPosts.filter(post => 
+  const pendingLeads = (leads || []).filter(l => l.status === 'Pending Reply' && l.mediaId);
+  
+  const postsWithPendingCount = initialPosts.map(post => {
+    const pendingCount = pendingLeads.filter(lead => 
+      lead.mediaId === post.reelId || 
+      lead.mediaId === post.fbPostId || 
+      lead.mediaId === post.shortcode || 
+      (post.sku && lead.mediaId === post.sku) ||
+      (lead.mediaId.includes('_') && (lead.mediaId.split('_')[1] === post.reelId || lead.mediaId.split('_')[1] === post.fbPostId))
+    ).length;
+    return { ...post, pendingCount };
+  });
+
+  const sortedPosts = [...postsWithPendingCount].sort((a, b) => b.pendingCount - a.pendingCount);
+
+  const filteredPosts = sortedPosts.filter(post => 
     post.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     post.description?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     post.reelId?.includes(searchQuery) ||
@@ -113,11 +128,18 @@ export default function PostManagerClient({ initialPosts }: { initialPosts: any[
                   <img src={post.thumbnailUrl} alt={post.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   
                   {/* Status Badge */}
-                  <div className="absolute top-3 left-3 flex gap-2">
-                    {post.status === 'sold' && <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-md font-medium shadow-sm">🔴 Sold</span>}
-                    {post.status === 'draft' && <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-md font-medium shadow-sm">🟡 Draft</span>}
-                    {post.status === 'hidden' && <span className="bg-gray-800 text-white text-xs px-2 py-1 rounded-md font-medium shadow-sm">⚫ Hidden</span>}
-                    {post.isPriceLocked && <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-md font-medium shadow-sm">🔒 Locked</span>}
+                  <div className="absolute top-3 left-3 flex flex-col gap-2 items-start">
+                    {post.pendingCount > 0 && (
+                      <span className="bg-orange-500 text-white text-xs px-2.5 py-1 rounded-md font-bold shadow-md animate-pulse border border-orange-400">
+                        🔥 {post.pendingCount} Waiting
+                      </span>
+                    )}
+                    <div className="flex gap-2">
+                      {post.status === 'sold' && <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-md font-medium shadow-sm">🔴 Sold</span>}
+                      {post.status === 'draft' && <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-md font-medium shadow-sm">🟡 Draft</span>}
+                      {post.status === 'hidden' && <span className="bg-gray-800 text-white text-xs px-2 py-1 rounded-md font-medium shadow-sm">⚫ Hidden</span>}
+                      {post.isPriceLocked && <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-md font-medium shadow-sm">🔒 Locked</span>}
+                    </div>
                   </div>
 
                   {post.publishedAt && (

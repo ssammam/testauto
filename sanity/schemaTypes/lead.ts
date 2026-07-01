@@ -25,7 +25,7 @@ export const leadType = defineType({
       title: 'Query Type',
       type: 'string',
       options: {
-        list: ['Store Visit', 'Custom Design', 'General', 'Reel Inquiry', 'Gold', 'Silver']
+        list: ['Store Visit', 'Custom Design', 'General', 'Reel Inquiry', 'Gold', 'Silver', 'Pending Price']
       }
     }),
     defineField({
@@ -40,7 +40,7 @@ export const leadType = defineType({
       title: 'Status',
       type: 'string',
       options: {
-        list: ['New', 'Contacted', 'Visited', 'Closed']
+        list: ['New', 'Contacted', 'Visited', 'Closed', 'Pending Reply']
       },
       initialValue: 'New',
     }),
@@ -49,6 +49,26 @@ export const leadType = defineType({
       title: 'Reported in Daily Email',
       type: 'boolean',
       initialValue: false,
+    }),
+    defineField({
+      name: 'platform',
+      title: 'Platform',
+      type: 'string',
+    }),
+    defineField({
+      name: 'senderId',
+      title: 'Sender ID',
+      type: 'string',
+    }),
+    defineField({
+      name: 'mediaId',
+      title: 'Media ID',
+      type: 'string',
+    }),
+    defineField({
+      name: 'commentId',
+      title: 'Comment ID',
+      type: 'string',
     })
   ],
 })

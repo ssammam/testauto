@@ -132,7 +132,7 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
     const isUnpricedRange = product.priceCalculationType === 'range' && (!product.minWeightGrams || !product.maxWeightGrams);
 
     if (isUnpricedNormal || isUnpricedLocked || isUnpricedRange) {
-      return `Namaste, ${name},\n\nThis is our product. We will get back to you and send a DM as soon as the price is updated in our backend. Please wait while we update the price. We are RH Jewellers Kengeri.`;
+      return `Namaste, ${name},\n\nThis is our product. We will get back to you as soon as possible. Please wait while we update the price. We are RH Jewellers Kengeri.`;
     }
 
     if (product.priceCalculationType === 'range') {
@@ -437,9 +437,9 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
       }
 
       if (isOurPost) {
-        dmMessage = `Namaste, ${name},\n\nThis is our product. We will get back to you and send a DM as soon as the price is updated in our backend. Please wait while we update the price. We are RH Jewellers Kengeri.`;
+        dmMessage = `Namaste, ${name},\n\nThis is our product. We will get back to you as soon as possible. Please wait while we update the price. We are RH Jewellers Kengeri.`;
       } else {
-        dmMessage = `Namaste, ${name}! We see you've shared a beautiful piece!\n\nIf this is from our collection, our team is currently calculating the exact live price for you.\n\nIf it's a design from elsewhere, we specialize in custom jewelry and would love to craft a custom piece inspired by it for you!\n\nPlease share your phone number, and our design expert will contact you shortly to assist you further! We are RH Jewellers Kengeri.`;
+        dmMessage = `Namaste, ${name}! We see you've shared a beautiful piece!\n\nIf you are checking the price for a product from our collection, please share the exact post or reel with us. (If you replied to a story or sent a screenshot, please share the reel/post for exact valuation).\n\nIf it's a design from elsewhere, we specialize in custom jewelry and would love to craft a custom piece inspired by it for you! Please share your phone number, and our design expert will contact you shortly! We are RH Jewellers Kengeri.`;
         await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'Custom Design', status: 'New', reportedInDailyEmail: false });
       }
     } else {
@@ -447,6 +447,21 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     }
 
     await dmText(senderId, dmMessage, config);
+
+    if (dmMessage.includes("We will get back to you as soon as possible. Please wait while we update the price.")) {
+      await writeClient.create({ 
+        _type: 'lead', 
+        instagramUsername: username, 
+        name: name, 
+        queryType: 'Pending Price', 
+        status: 'Pending Reply', 
+        platform: config.platform,
+        senderId: senderId,
+        mediaId: mediaId,
+        reportedInDailyEmail: false 
+      });
+    }
+
     return;
   }
 }
@@ -500,6 +515,21 @@ export async function processComment(change: Record<string, any>, config: BotCon
         }
         
         await sendDM({ comment_id: commentId }, { message: { text: dmMessage } }, config);
+
+        if (dmMessage.includes("We will get back to you as soon as possible. Please wait while we update the price.")) {
+          await writeClient.create({ 
+            _type: 'lead', 
+            instagramUsername: commenterUsername || commenterFirstName, 
+            name: commenterFirstName || "there", 
+            queryType: 'Pending Price', 
+            status: 'Pending Reply', 
+            platform: config.platform,
+            senderId: value.from?.id,
+            commentId: commentId,
+            mediaId: mediaId,
+            reportedInDailyEmail: false 
+          });
+        }
       } catch (err) {
         console.error(`[${config.platform} handleComment] DM to commenter skipped:`, err);
       }
@@ -623,12 +653,87 @@ export async function processWhatsAppMessage(message: any, contacts: any[], conf
     if (product) {
       dmMessage = buildProductDmMessage(product, rates, name);
     } else if (mediaId || hasImage) {
-      dmMessage = `Namaste, ${name},\n\nThis is our product. We will get back to you and send a DM as soon as the price is updated in our backend. Please wait while we update the price. We are RH Jewellers Kengeri.`;
+      dmMessage = `Namaste, ${name},\n\nThis is our product. We will get back to you as soon as possible. Please wait while we update the price. We are RH Jewellers Kengeri.`;
     } else {
       dmMessage = `Namaste, ${name}! To give you the exact price, could you please share the reel link, product image, or the SKU of the specific jewelry piece you're interested in?\n\nOur team will check the details and get back to you with the exact live price! We are RH Jewellers Kengeri.`;
     }
 
     await sendWhatsAppMessage(senderId, dmMessage, config);
+
+    if (dmMessage.includes("We will get back to you as soon as possible. Please wait while we update the price.")) {
+      await writeClient.create({ 
+        _type: 'lead', 
+        instagramUsername: username, 
+        name: name, 
+        queryType: 'Pending Price', 
+        status: 'Pending Reply', 
+        platform: 'whatsapp',
+        senderId: senderId,
+        mediaId: mediaId,
+        reportedInDailyEmail: false 
+      });
+    }
+
     return;
+  }
+}
+
+export async function sendPendingReplies(product: any) {
+  const leads = await client.fetch(`*[_type == "lead" && status == "Pending Reply" && mediaId != null]`);
+  
+  const matchingLeads = leads.filter((lead: any) => {
+    return lead.mediaId === product.reelId || 
+           lead.mediaId === product.fbPostId || 
+           lead.mediaId === product.shortcode || 
+           (product.sku && lead.mediaId === product.sku) ||
+           (lead.mediaId.includes('_') && (lead.mediaId.split('_')[1] === product.reelId || lead.mediaId.split('_')[1] === product.fbPostId));
+  });
+
+  if (matchingLeads.length === 0) return;
+
+  const rates = await getRates();
+
+  for (const lead of matchingLeads) {
+    const dmMessage = buildProductDmMessage(product, rates, lead.name);
+
+    if (dmMessage.includes("We will get back to you as soon as possible")) continue;
+
+    const config: BotConfig = {
+      platform: lead.platform as 'instagram' | 'facebook' | 'whatsapp',
+      token: lead.platform === 'instagram' ? process.env.INSTAGRAM_PAGE_ACCESS_TOKEN! : 
+             lead.platform === 'facebook' ? process.env.FACEBOOK_PAGE_ACCESS_TOKEN! : 
+             process.env.WHATSAPP_TOKEN!,
+      botId: lead.platform === 'whatsapp' ? process.env.WHATSAPP_PHONE_NUMBER_ID! : 
+             lead.platform === 'facebook' ? process.env.FACEBOOK_PAGE_ID! :
+             process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID!
+    };
+
+    try {
+      if (lead.platform === 'whatsapp') {
+        // We'd need sendWhatsAppMessage, which is not exported, so let's use fetch directly
+        await fetch(`https://graph.facebook.com/v20.0/${config.botId}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${config.token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: lead.senderId, type: "text", text: { body: dmMessage } })
+        });
+      } else if (lead.commentId) {
+        // Send DM for comment
+        const baseUrl = config.token.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
+        await fetch(`${baseUrl}/v25.0/me/messages?access_token=${config.token}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipient: { comment_id: lead.commentId }, message: { text: dmMessage } })
+        });
+      } else if (lead.senderId) {
+        // Send DM
+        const baseUrl = config.token.startsWith("IGAA") ? "https://graph.instagram.com" : "https://graph.facebook.com";
+        await fetch(`${baseUrl}/v25.0/me/messages?access_token=${config.token}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipient: { id: lead.senderId }, message: { text: dmMessage }, messaging_type: config.platform === 'facebook' ? "RESPONSE" : undefined })
+        });
+      }
+      await writeClient.patch(lead._id).set({ status: 'Contacted' }).commit();
+    } catch (e) {
+      console.error("Failed to send pending reply for lead", lead._id, e);
+    }
   }
 }

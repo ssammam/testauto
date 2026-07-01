@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { updateLeadStatus } from './actions';
-import { Phone, User, AtSign, Calendar, MapPin, Sparkles, Folder } from 'lucide-react';
+import { Phone, User, AtSign, Calendar, MapPin, Sparkles, Folder, Clock } from 'lucide-react';
 
 export default function LeadManagerClient({ initialLeads }: { initialLeads: any[] }) {
   const [leads, setLeads] = useState(initialLeads);
@@ -23,13 +23,15 @@ export default function LeadManagerClient({ initialLeads }: { initialLeads: any[
       case 'Contacted': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'Visited': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'Closed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'Pending Reply': return 'bg-orange-100 text-orange-800 border-orange-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const incomers = leads.filter(l => l.queryType === 'Store Visit' && l.phoneNumber);
   const customDesign = leads.filter(l => l.queryType === 'Custom Design');
-  const generalLeads = leads.filter(l => !((l.queryType === 'Store Visit' && l.phoneNumber) || l.queryType === 'Custom Design'));
+  const pendingReplies = leads.filter(l => l.status === 'Pending Reply');
+  const generalLeads = leads.filter(l => !((l.queryType === 'Store Visit' && l.phoneNumber) || l.queryType === 'Custom Design' || l.status === 'Pending Reply'));
 
   const renderTable = (title: string, desc: string, icon: any, data: any[]) => (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-8">
@@ -121,6 +123,7 @@ export default function LeadManagerClient({ initialLeads }: { initialLeads: any[
                         >
                           <option value="New">Mark New</option>
                           <option value="Contacted">Mark Contacted</option>
+                          <option value="Pending Reply">Mark Pending Reply</option>
                           <option value="Visited">Mark Visited</option>
                           <option value="Closed">Mark Closed</option>
                         </select>
@@ -143,6 +146,13 @@ export default function LeadManagerClient({ initialLeads }: { initialLeads: any[
         "Customers who have requested a store visit and provided a phone number.", 
         <MapPin className="w-5 h-5 text-[#e1b366]" />, 
         incomers
+      )}
+      
+      {renderTable(
+        "Pending Replies", 
+        "Customers waiting for product price updates. They will get an auto-reply when you update the price in Post Manager.", 
+        <Clock className="w-5 h-5 text-orange-500" />, 
+        pendingReplies
       )}
       
       {renderTable(
