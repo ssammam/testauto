@@ -60,7 +60,7 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
       return;
     }
 
-    const headers = ['Platform', 'Post ID', 'URL', 'Status', 'Pending Inquiries', 'Current Weight (g)', 'Category', 'Description snippet'];
+    const headers = ['Platform', 'Post ID', 'URL', 'Status', 'Pending Inquiries', 'Category', 'Description snippet', 'Enter Single Weight (g)', 'Enter Min Weight (g)', 'Enter Max Weight (g)'];
     const rows = waitingPosts.map(post => {
       const platform = post.postedOn || (post.fbPostId ? 'facebook' : 'instagram');
       const id = post.reelId || post.fbPostId || post.shortcode || '';
@@ -69,12 +69,16 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
       if (platform.includes('instagram')) {
         url = post.shortcode ? `https://instagram.com/p/${post.shortcode}` : (post.reelId ? `https://instagram.com/reel/${post.reelId}` : '');
       } else if (platform.includes('facebook')) {
-        url = post.fbPostId ? `https://facebook.com/${post.fbPostId}` : '';
+        if (id.includes('_')) {
+          const parts = id.split('_');
+          url = `https://facebook.com/${parts[0]}/posts/${parts[1]}`;
+        } else {
+          url = `https://facebook.com/watch/?v=${id}`;
+        }
       }
       
       const status = post.status || 'active';
       const pendingCount = post.pendingCount || 0;
-      const weight = post.weightGrams || '';
       const category = post.category || '';
       const desc = (post.description || '').substring(0, 80).replace(/\n/g, ' ').replace(/"/g, '""');
       
@@ -84,9 +88,11 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
         `"${url}"`,
         status,
         pendingCount,
-        weight,
         `"${category}"`,
-        `"${desc}"`
+        `"${desc}"`,
+        "",
+        "",
+        ""
       ].join(',');
     });
     
