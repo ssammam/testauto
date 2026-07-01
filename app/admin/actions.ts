@@ -11,12 +11,13 @@ export async function saveDailyRates(formData: FormData) {
   if (!session) return { success: false, error: "Unauthorized access." };
 
   try {
+    const gold9k = parseFloat(formData.get('goldRate9k') as string);
     const gold18k = parseFloat(formData.get('goldRate18k') as string);
     const gold22k = parseFloat(formData.get('goldRate22k') as string);
     const gold24k = parseFloat(formData.get('goldRate24k') as string);
     const silver = parseFloat(formData.get('silverRate') as string);
 
-    if (isNaN(gold18k) || isNaN(gold22k) || isNaN(gold24k) || isNaN(silver)) {
+    if (isNaN(gold9k) || isNaN(gold18k) || isNaN(gold22k) || isNaN(gold24k) || isNaN(silver)) {
       throw new Error("Invalid rate values.");
     }
 
@@ -26,6 +27,7 @@ export async function saveDailyRates(formData: FormData) {
     await writeClient.create({
       _type: 'dailyPrice',
       date: today,
+      goldRate9k: gold9k,
       goldRate18k: gold18k,
       goldRate22k: gold22k,
       goldRate24k: gold24k,

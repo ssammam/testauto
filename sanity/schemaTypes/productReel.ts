@@ -65,6 +65,7 @@ export const productReelType = defineType({
       type: 'string',
       options: {
         list: [
+          { title: '9K Gold', value: 'gold9k' },
           { title: '18K Gold', value: 'gold18k' },
           { title: '22K Gold', value: 'gold22k' },
           { title: '24K Gold', value: 'gold24k' },

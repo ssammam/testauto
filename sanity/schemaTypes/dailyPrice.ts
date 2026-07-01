@@ -18,6 +18,12 @@ export const dailyPriceType = defineType({
       description: 'Price per gram of 18K Gold in INR',
     }),
     defineField({
+      name: 'goldRate9k',
+      title: 'Gold Rate (9K) per Gram',
+      type: 'number',
+      description: 'Price per gram of 9K Gold in INR',
+    }),
+    defineField({
       name: 'goldRate22k',
       title: 'Gold Rate (22K) per Gram',
       type: 'number',

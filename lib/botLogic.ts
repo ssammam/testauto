@@ -32,22 +32,30 @@ export function extractProductInfo(desc: string, currentCategory: string = "") {
   const descLower = (desc || "").toLowerCase();
   let updates: any = {};
 
-  const karatMatch = descLower.match(/(22k|18k|24k)/i);
+  const karatMatch = descLower.match(/(9|18|22|24)\s*(k|kt|karat|katrat)\b/i);
   if (karatMatch) {
-    const k = karatMatch[1].toLowerCase();
-    if (k === '18k') updates.materialType = 'gold18k';
-    else if (k === '22k') updates.materialType = 'gold22k';
-    else if (k === '24k') updates.materialType = 'gold24k';
+    const num = karatMatch[1];
+    if (num === '9') updates.materialType = 'gold9k';
+    else if (num === '18') updates.materialType = 'gold18k';
+    else if (num === '22') updates.materialType = 'gold22k';
+    else if (num === '24') updates.materialType = 'gold24k';
   } else if (descLower.includes('silver')) {
     updates.materialType = 'silver';
   }
 
   const cats = ['ring', 'chain', 'bangle', 'bracelet', 'necklace', 'earring', 'pendant', 'choker', 'mangalsutra'];
+  let matchedCats = [];
   for (const cat of cats) {
     if (descLower.includes(cat)) {
-      updates.category = cat + (cat.endsWith('s') ? '' : 's');
-      break;
+      matchedCats.push(cat);
     }
+  }
+
+  if (matchedCats.length > 1) {
+    updates.category = 'jewellery';
+  } else if (matchedCats.length === 1) {
+    const cat = matchedCats[0];
+    updates.category = cat + (cat.endsWith('s') ? '' : 's');
   }
 
   let allWeights: number[] = [];
@@ -137,6 +145,7 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       if (rates?.goldRate24k) rateReply += `\n🔸 24K Gold: ₹${rates.goldRate24k.toLocaleString('en-IN')} per gram`;
       if (rates?.goldRate22k) rateReply += `\n🔸 22K Gold: ₹${rates.goldRate22k.toLocaleString('en-IN')} per gram`;
       if (rates?.goldRate18k) rateReply += `\n🔸 18K Gold: ₹${rates.goldRate18k.toLocaleString('en-IN')} per gram`;
+      if (rates?.goldRate9k) rateReply += `\n🔸 9K Gold: ₹${rates.goldRate9k.toLocaleString('en-IN')} per gram`;
       if (rates?.silverRate) rateReply += `\n🔸 Silver: ₹${rates.silverRate.toLocaleString('en-IN')} per kg`;
       
       const footerText = `✅ BIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that product. We are RH Jewellers Kengeri.\n\n⚠️ Disclaimer:\nFinal price is based on the billing date's gold rate & ornament weight.`;
@@ -176,7 +185,8 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       totalPrice = product.lockedPrice;
     } else {
       let ratePerGram = 0;
-      if (product.materialType === 'gold18k') ratePerGram = rates?.goldRate18k || 0;
+      if (product.materialType === 'gold9k') ratePerGram = rates?.goldRate9k || 0;
+      else if (product.materialType === 'gold18k') ratePerGram = rates?.goldRate18k || 0;
       else if (product.materialType === 'gold22k') ratePerGram = rates?.goldRate22k || 0;
       else if (product.materialType === 'gold24k') ratePerGram = rates?.goldRate24k || 0;
       else if (product.materialType === 'silver') ratePerGram = (rates?.silverRate || 0) / 1000;
@@ -361,6 +371,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
     if (rates?.goldRate24k) rateReply += `\n🔸 24K Gold: ₹${rates.goldRate24k.toLocaleString('en-IN')} per gram`;
     if (rates?.goldRate22k) rateReply += `\n🔸 22K Gold: ₹${rates.goldRate22k.toLocaleString('en-IN')} per gram`;
     if (rates?.goldRate18k) rateReply += `\n🔸 18K Gold: ₹${rates.goldRate18k.toLocaleString('en-IN')} per gram`;
+    if (rates?.goldRate9k) rateReply += `\n🔸 9K Gold: ₹${rates.goldRate9k.toLocaleString('en-IN')} per gram`;
     if (rates?.silverRate) rateReply += `\n🔸 Silver: ₹${rates.silverRate.toLocaleString('en-IN')} per kg`;
 
     rateReply += `\n\nIs there a specific jewelry design you are looking for? We are RH Jewellers Kengeri.`;
@@ -559,6 +570,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
       if (rates?.goldRate24k) rateReply += `\n🔸 24K Gold: ₹${rates.goldRate24k.toLocaleString('en-IN')} per gram`;
       if (rates?.goldRate22k) rateReply += `\n🔸 22K Gold: ₹${rates.goldRate22k.toLocaleString('en-IN')} per gram`;
       if (rates?.goldRate18k) rateReply += `\n🔸 18K Gold: ₹${rates.goldRate18k.toLocaleString('en-IN')} per gram`;
+      if (rates?.goldRate9k) rateReply += `\n🔸 9K Gold: ₹${rates.goldRate9k.toLocaleString('en-IN')} per gram`;
       if (rates?.silverRate) rateReply += `\n🔸 Silver: ₹${rates.silverRate.toLocaleString('en-IN')} per kg`;
 
       rateReply += `\n\nIs there a specific jewelry design you are looking for? We are RH Jewellers Kengeri.`;

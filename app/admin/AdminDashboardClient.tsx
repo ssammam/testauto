@@ -11,7 +11,7 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
   // Calculator State
   const [calcWeight, setCalcWeight] = useState<string>('');
   const [calcMakingCharges, setCalcMakingCharges] = useState<string>('');
-  const [selectedPurity, setSelectedPurity] = useState<'18k' | '22k' | '24k' | 'silver'>('22k');
+  const [selectedPurity, setSelectedPurity] = useState<'9k' | '18k' | '22k' | '24k' | 'silver'>('22k');
 
   const handleSaveRates = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -32,6 +32,7 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
 
   const getSelectedRate = () => {
     switch (selectedPurity) {
+      case '9k': return initialRates?.goldRate9k || 0;
       case '18k': return initialRates?.goldRate18k || 0;
       case '22k': return initialRates?.goldRate22k || 0;
       case '24k': return initialRates?.goldRate24k || 0;
@@ -77,6 +78,7 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
   useEffect(() => {
     if (initialRates) {
       setTextNodes([
+        { id: '0', text: `₹${parseFloat(initialRates?.goldRate9k || '0').toLocaleString('en-IN')}`, x: 540, y: 700, fontSize: 80, color: '#e1b366', align: 'center' },
         { id: '1', text: `₹${parseFloat(initialRates?.goldRate24k || '0').toLocaleString('en-IN')}`, x: 540, y: 800, fontSize: 80, color: '#e1b366', align: 'center' },
         { id: '2', text: `₹${parseFloat(initialRates?.goldRate22k || '0').toLocaleString('en-IN')}`, x: 540, y: 1000, fontSize: 80, color: '#e1b366', align: 'center' },
         { id: '3', text: `₹${parseFloat(initialRates?.goldRate18k || '0').toLocaleString('en-IN')}`, x: 540, y: 1200, fontSize: 80, color: '#e1b366', align: 'center' },
@@ -254,6 +256,8 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
               <span className="mx-4 text-white/50">•</span>
               <span>18K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate18k?.toLocaleString('en-IN') || 0}/g</span></span>
               <span className="mx-4 text-white/50">•</span>
+              <span>9K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate9k?.toLocaleString('en-IN') || 0}/g</span></span>
+              <span className="mx-4 text-white/50">•</span>
               <span>Silver: <span className="text-white font-bold tracking-wide">₹{initialRates.silverRate?.toLocaleString('en-IN') || 0}/kg</span></span>
               <span className="mx-4 text-white/50">•</span>
               
@@ -263,6 +267,8 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
               <span>22K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate22k?.toLocaleString('en-IN') || 0}/g</span></span>
               <span className="mx-4 text-white/50">•</span>
               <span>18K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate18k?.toLocaleString('en-IN') || 0}/g</span></span>
+              <span className="mx-4 text-white/50">•</span>
+              <span>9K Gold: <span className="text-white font-bold tracking-wide">₹{initialRates.goldRate9k?.toLocaleString('en-IN') || 0}/g</span></span>
               <span className="mx-4 text-white/50">•</span>
               <span>Silver: <span className="text-white font-bold tracking-wide">₹{initialRates.silverRate?.toLocaleString('en-IN') || 0}/kg</span></span>
             </div>
@@ -296,6 +302,18 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
                   defaultValue={initialRates?.goldRate18k}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#7c6a46]/20 focus:border-[#7c6a46] transition-all"
                   placeholder="e.g. 5200"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">9K Gold Rate (₹/g)</label>
+                <input 
+                  name="goldRate9k"
+                  type="number"
+                  step="0.01"
+                  required
+                  defaultValue={initialRates?.goldRate9k}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#7c6a46]/20 focus:border-[#7c6a46] transition-all"
+                  placeholder="e.g. 2600"
                 />
               </div>
               <div className="space-y-1">
