@@ -318,7 +318,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
   const username: string = profile.username || profile.name || senderId;
 
   // 1. GREETING
-  if (messageText === "hello" || messageText === "hi" || messageText === "hey" || messageText === "namaste") {
+  if (/^(hello|hi|hey|namaste)(\s+.*)?$/.test(messageText)) {
     await dmText(senderId, `Namaste, ${name}! Are you looking for Gold or Silver? What can we help you with? We are RH Jewellers Kengeri.`, config);
     return;
   }
