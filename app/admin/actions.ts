@@ -299,6 +299,15 @@ export async function updateProductReel(id: string, formData: FormData) {
     const minWeightGrams = parseFloat(formData.get('minWeightGrams') as string) || 0;
     const maxWeightGrams = parseFloat(formData.get('maxWeightGrams') as string) || 0;
 
+    let finalStatus = status;
+    if (finalStatus === 'draft') {
+      const hasNormalWeight = priceCalculationType === 'normal' && weightGrams > 0;
+      const hasRangeWeight = priceCalculationType === 'range' && minWeightGrams > 0 && maxWeightGrams > 0;
+      if (hasNormalWeight || hasRangeWeight || isPriceLocked) {
+        finalStatus = 'active';
+      }
+    }
+
     await writeClient.patch(id).set({
       name,
       materialType,
@@ -306,7 +315,7 @@ export async function updateProductReel(id: string, formData: FormData) {
       makingCharges,
       makingChargeType,
       description,
-      status,
+      status: finalStatus,
       category,
       sku,
       isPriceLocked,
@@ -318,7 +327,7 @@ export async function updateProductReel(id: string, formData: FormData) {
       maxWeightGrams
     }).commit();
 
-    if (status !== 'draft') {
+    if (finalStatus !== 'draft') {
       const updatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id });
       await sendPendingReplies(updatedProduct);
     }
