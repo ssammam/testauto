@@ -53,7 +53,7 @@ export function extractProductInfo(desc: string, currentCategory: string = "") {
   let allWeights: number[] = [];
 
   // Find all ranges (e.g. 8-12 grams, 4 to 5 grams)
-  const rangeRegex = /(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|grams)?\s*(?:-|to)\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|grams)\b/gi;
+  const rangeRegex = /(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|gram|grams)?\s*(?:-|to)\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|gram|grams)\b/gi;
   const rangeMatches = [...descLower.matchAll(rangeRegex)];
   for (const match of rangeMatches) {
     allWeights.push(parseFloat(match[1]));
@@ -61,7 +61,7 @@ export function extractProductInfo(desc: string, currentCategory: string = "") {
   }
 
   // Find all single weights (e.g. 1.5 grams, 4 grams)
-  const weightRegex = /(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|grams)\b/gi;
+  const weightRegex = /(?:weight|wt)?\s*:?-?\s*(\d+(?:\.\d+)?)\s*-?\s*(?:g|gm|gms|gram|grams)\b/gi;
   const singleMatches = [...descLower.matchAll(weightRegex)];
   for (const match of singleMatches) {
     allWeights.push(parseFloat(match[1]));
@@ -138,8 +138,10 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       if (rates?.goldRate22k) rateReply += `\n🔸 22K Gold: ₹${rates.goldRate22k.toLocaleString('en-IN')} per gram`;
       if (rates?.goldRate18k) rateReply += `\n🔸 18K Gold: ₹${rates.goldRate18k.toLocaleString('en-IN')} per gram`;
       if (rates?.silverRate) rateReply += `\n🔸 Silver: ₹${rates.silverRate.toLocaleString('en-IN')} per kg`;
+      
+      const footerText = `✅ BIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that product. We are RH Jewellers Kengeri.\n\n⚠️ Disclaimer:\nFinal price is based on the billing date's gold rate & ornament weight.`;
 
-      return `Namaste, ${name},\n\nThis is our product.\n\n${rateReply}\n\nWe will get back to you as soon as possible. Please wait while we update the price. We are RH Jewellers Kengeri.`;
+      return `Namaste, ${name},\n\nThis is our product.\n\n${rateReply}\n\nWe will get back to you as soon as possible. Please wait while we update the price.\n\n${footerText}`;
     }
 
     if (product.priceCalculationType === 'range') {
