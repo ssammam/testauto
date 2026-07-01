@@ -343,21 +343,21 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
 
   // 2.5 DETECT LOCATION / CONTACT INTENT
   if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address") || messageText.includes("place") || messageText.includes("landmark") || messageText.includes("contact") || messageText.includes("phone") || messageText.includes("number") || messageText.includes("call")) {
-    await dmText(senderId, `Namaste, ${name}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`, config);
+    await dmText(senderId, `Namaste, ${name}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://maps.app.goo.gl/D8uuSHdgHX1F6yBeA\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`, config);
     await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'Store Visit', status: 'New', reportedInDailyEmail: false });
     return;
   }
 
   // 2.6 DETECT OLD GOLD EXCHANGE
   if (messageText.includes("old gold") || messageText.includes("exchange")) {
-    await dmText(senderId, `Namaste, ${name}\n\nYes, we take old gold! Please visit our store so you can exchange them for a brand new product!\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`, config);
+    await dmText(senderId, `Namaste, ${name}\n\nYes, we take old gold! Please visit our store so you can exchange them for a brand new product!\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Link:\nhttps://maps.app.goo.gl/D8uuSHdgHX1F6yBeA\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`, config);
     await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'Old Gold Exchange', status: 'New', reportedInDailyEmail: false });
     return;
   }
 
   // 2.7 DETECT MAKING CHARGES / WASTAGE QUERY
   if (messageText.includes("making charges") || messageText.includes("making charge") || messageText.includes("mc") || messageText.includes("wastage") || messageText.includes("wasteage")) {
-    await dmText(senderId, `Namaste, ${name}\n\nWastage is 10%, but Making Charges are 0! We don't charge for making! Visit us to buy jewelry.\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe are RH Jewellers Kengeri.`, config);
+    await dmText(senderId, `Namaste, ${name}\n\nWastage is 10%, but Making Charges are 0! We don't charge for making! Visit us to buy jewelry.\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Link:\nhttps://maps.app.goo.gl/D8uuSHdgHX1F6yBeA\n\nWe are RH Jewellers Kengeri.`, config);
     return;
   }
 
@@ -388,7 +388,7 @@ export async function processDM(event: Record<string, any>, config: BotConfig) {
   if (providedPhone || messageText.includes("monday") || messageText.includes("tuesday") || messageText.includes("wednesday") || messageText.includes("thursday") || messageText.includes("friday") || messageText.includes("saturday") || messageText.includes("sunday")) {
     let extractedDate = messageText.includes("day") ? rawMessageText : "Date not specified";
 
-    await dmText(senderId, `Thank you! We have noted your appointment details. We'll be waiting for you!\n\n📍 Location: 312 Kuvempu Road, Kengeri, Bengaluru\nMap: https://share.google/wfAwpsnVcIuq32IIx\nContact: 9620741404\n\nWe are RH Jewellers Kengeri.`, config);
+    await dmText(senderId, `Thank you! We have noted your appointment details. We'll be waiting for you!\n\n📍 Location: 312 Kuvempu Road, Kengeri, Bengaluru\nMap: https://maps.app.goo.gl/D8uuSHdgHX1F6yBeA\nContact: 9620741404\n\nWe are RH Jewellers Kengeri.`, config);
 
     // Check if we have a recent lead for this user and update it with the phone/date
     const existingLead = await client.fetch(`*[_type == "lead" && instagramUsername == $username] | order(_createdAt desc)[0]`, { username });
@@ -522,7 +522,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
         : `Thank you for your interest! Please check your inbox. Regards RH Jewellers, Kengeri.`;
       await replyToComment(commentId, replyMsg, config);
 
-      const dmMessage = `Namaste, ${commenterFirstName || "there"}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`;
+      const dmMessage = `Namaste, ${commenterFirstName || "there"}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://maps.app.goo.gl/D8uuSHdgHX1F6yBeA\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`;
 
       await sendDM({ comment_id: commentId }, { message: { text: dmMessage } }, config);
 
@@ -548,7 +548,7 @@ export async function processComment(change: Record<string, any>, config: BotCon
         : `Thank you for your interest! Please check your inbox. Regards RH Jewellers, Kengeri.`;
       await replyToComment(commentId, replyMsg, config);
 
-      const dmMessage = `Namaste, ${commenterFirstName || "there"}\n\nWastage is 10%, but Making Charges are 0! We don't charge for making! Visit us to buy jewelry.\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe are RH Jewellers Kengeri.`;
+      const dmMessage = `Namaste, ${commenterFirstName || "there"}\n\nWastage is 10%, but Making Charges are 0! We don't charge for making! Visit us to buy jewelry.\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\nGoogle Link:\nhttps://maps.app.goo.gl/D8uuSHdgHX1F6yBeA\n\nWe are RH Jewellers Kengeri.`;
 
       await sendDM({ comment_id: commentId }, { message: { text: dmMessage } }, config);
     }
@@ -683,7 +683,7 @@ async function sendWhatsAppMessage(to: string, text: string, config: BotConfig) 
 
     // 2.5 DETECT LOCATION INTENT
     if (messageText.includes("location") || messageText.includes("where") || messageText.includes("address") || messageText.includes("place") || messageText.includes("landmark")) {
-      await sendWhatsAppMessage(senderId, `Namaste, ${name}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://share.google/wfAwpsnVcIuq32IIx\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`, config);
+      await sendWhatsAppMessage(senderId, `Namaste, ${name}\n\n📍Visit Our Store: \n312 Kuvempu Road, Mahakavi Kuvempu Rd, Kengeri, Bengaluru, Karnataka 560060\n\nContact: 9620741404\n\nGoogle Link:\nhttps://maps.app.goo.gl/D8uuSHdgHX1F6yBeA\n\nWe look forward to welcoming you! We are RH Jewellers Kengeri.`, config);
       await writeClient.create({ _type: 'lead', instagramUsername: username, name: name, queryType: 'Store Visit', status: 'New', reportedInDailyEmail: false });
       return;
     }
@@ -693,7 +693,7 @@ async function sendWhatsAppMessage(to: string, text: string, config: BotConfig) 
     if (phoneRegex.test(messageText) || messageText.includes("monday") || messageText.includes("tuesday") || messageText.includes("wednesday") || messageText.includes("thursday") || messageText.includes("friday") || messageText.includes("saturday") || messageText.includes("sunday")) {
       let extractedDate = messageText.includes("day") ? rawMessageText : "Date not specified";
 
-      await sendWhatsAppMessage(senderId, `Thank you! We have noted your appointment details. We'll be waiting for you!\n\n📍 Location: 312 Kuvempu Road, Kengeri, Bengaluru\nMap: https://share.google/wfAwpsnVcIuq32IIx\nContact: 9620741404\n\nWe are RH Jewellers Kengeri.`, config);
+      await sendWhatsAppMessage(senderId, `Thank you! We have noted your appointment details. We'll be waiting for you!\n\n📍 Location: 312 Kuvempu Road, Kengeri, Bengaluru\nMap: https://maps.app.goo.gl/D8uuSHdgHX1F6yBeA\nContact: 9620741404\n\nWe are RH Jewellers Kengeri.`, config);
 
       const existingLead = await client.fetch(`*[_type == "lead" && instagramUsername == $username] | order(_createdAt desc)[0]`, { username });
       if (existingLead) {
