@@ -68,7 +68,13 @@ export async function syncInstagramPosts() {
     }
 
     const data = await res.json();
-    const igPosts = data.data || [];
+    const allIgPosts = data.data || [];
+    const SYNC_START_DATE = new Date('2026-05-01T00:00:00Z');
+    
+    const igPosts = allIgPosts.filter((post: any) => {
+      const postDate = post.timestamp ? new Date(post.timestamp) : null;
+      return postDate && postDate >= SYNC_START_DATE;
+    });
 
     // --- NEW: Fetch Facebook Posts to detect cross-posting ---
     let fbPosts: any[] = [];
@@ -78,9 +84,10 @@ export async function syncInstagramPosts() {
       if (fbToken && fbPageId) {
         const fbUrl = `https://graph.facebook.com/v20.0/${fbPageId}/posts?fields=id,message,created_time,full_picture&access_token=${fbToken}&limit=50`;
         const fbRes = await fetch(fbUrl);
+        let rawFbPosts: any[] = [];
         if (fbRes.ok) {
           const fbData = await fbRes.json();
-          fbPosts = fbData.data || [];
+          rawFbPosts = fbData.data || [];
         }
 
         const fbReelsUrl = `https://graph.facebook.com/v20.0/${fbPageId}/video_reels?fields=id,description,created_time,picture&access_token=${fbToken}&limit=50`;
@@ -94,9 +101,14 @@ export async function syncInstagramPosts() {
                  created_time: r.created_time,
                  full_picture: r.picture
              }));
-             fbPosts = [...fbPosts, ...mappedReels];
+             rawFbPosts = [...rawFbPosts, ...mappedReels];
           }
         }
+
+        fbPosts = rawFbPosts.filter((post: any) => {
+          const postDate = post.created_time ? new Date(post.created_time) : null;
+          return postDate && postDate >= SYNC_START_DATE;
+        });
       }
     } catch (e) {
       console.error("Error fetching FB posts for cross-post matching:", e);
