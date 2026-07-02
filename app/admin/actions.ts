@@ -42,7 +42,7 @@ export async function saveDailyRates(formData: FormData) {
   }
 }
 
-export async function syncInstagramPosts() {
+export async function syncInstagramPosts(customStartDate?: string) {
   const session = await getServerSession(authOptions);
   if (!session) return { success: false, error: "Unauthorized access." };
 
@@ -61,16 +61,30 @@ export async function syncInstagramPosts() {
       fetchUrl = `${baseUrl}/v20.0/${IG_ID}/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&access_token=${TOKEN}&limit=100`;
     }
 
-    const res = await fetch(fetchUrl);
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error?.message || "Failed to fetch IG posts");
+    const SYNC_START_DATE = customStartDate ? new Date(customStartDate) : new Date('2026-05-01T00:00:00Z');
+    let allIgPosts: any[] = [];
+    let nextUrl = fetchUrl;
+    
+    while (nextUrl) {
+      const res = await fetch(nextUrl);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error?.message || "Failed to fetch IG posts");
+      }
+      const data = await res.json();
+      const pagePosts = data.data || [];
+      allIgPosts = [...allIgPosts, ...pagePosts];
+      
+      if (pagePosts.length > 0) {
+        const oldestPost = pagePosts[pagePosts.length - 1];
+        const oldestPostDate = oldestPost.timestamp ? new Date(oldestPost.timestamp) : null;
+        if (oldestPostDate && oldestPostDate < SYNC_START_DATE) {
+          break;
+        }
+      }
+      nextUrl = data.paging?.next || "";
     }
 
-    const data = await res.json();
-    const allIgPosts = data.data || [];
-    const SYNC_START_DATE = new Date('2026-05-01T00:00:00Z');
-    
     const igPosts = allIgPosts
       .filter((post: any) => {
         const postDate = post.timestamp ? new Date(post.timestamp) : null;
@@ -88,26 +102,54 @@ export async function syncInstagramPosts() {
       const fbToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
       const fbPageId = process.env.FACEBOOK_PAGE_ID;
       if (fbToken && fbPageId) {
-        const fbUrl = `https://graph.facebook.com/v20.0/${fbPageId}/posts?fields=id,message,created_time,full_picture&access_token=${fbToken}&limit=50`;
-        const fbRes = await fetch(fbUrl);
+        const fbUrl = `https://graph.facebook.com/v20.0/${fbPageId}/posts?fields=id,message,created_time,full_picture&access_token=${fbToken}&limit=100`;
         let rawFbPosts: any[] = [];
-        if (fbRes.ok) {
-          const fbData = await fbRes.json();
-          rawFbPosts = fbData.data || [];
+        let fbNextUrl = fbUrl;
+        while (fbNextUrl) {
+          const fbRes = await fetch(fbNextUrl);
+          if (fbRes.ok) {
+            const fbData = await fbRes.json();
+            const pageFbPosts = fbData.data || [];
+            rawFbPosts = [...rawFbPosts, ...pageFbPosts];
+            
+            if (pageFbPosts.length > 0) {
+              const oldestPost = pageFbPosts[pageFbPosts.length - 1];
+              const oldestPostDate = oldestPost.created_time ? new Date(oldestPost.created_time) : null;
+              if (oldestPostDate && oldestPostDate < SYNC_START_DATE) {
+                break;
+              }
+            }
+            fbNextUrl = fbData.paging?.next || "";
+          } else {
+            break;
+          }
         }
 
-        const fbReelsUrl = `https://graph.facebook.com/v20.0/${fbPageId}/video_reels?fields=id,description,created_time,picture&access_token=${fbToken}&limit=50`;
-        const fbReelsRes = await fetch(fbReelsUrl);
-        if (fbReelsRes.ok) {
-          const fbReelsData = await fbReelsRes.json();
-          if (fbReelsData.data) {
-             const mappedReels = fbReelsData.data.map((r: any) => ({
-                 id: r.id, // Usually just the reel ID, not PAGEID_REELID
-                 message: r.description,
-                 created_time: r.created_time,
-                 full_picture: r.picture
-             }));
-             rawFbPosts = [...rawFbPosts, ...mappedReels];
+        const fbReelsUrl = `https://graph.facebook.com/v20.0/${fbPageId}/video_reels?fields=id,description,created_time,picture&access_token=${fbToken}&limit=100`;
+        let fbReelsNextUrl = fbReelsUrl;
+        while (fbReelsNextUrl) {
+          const fbReelsRes = await fetch(fbReelsNextUrl);
+          if (fbReelsRes.ok) {
+            const fbReelsData = await fbReelsRes.json();
+            const pageFbReels = fbReelsData.data || [];
+            if (pageFbReels.length > 0) {
+              const mappedReels = pageFbReels.map((r: any) => ({
+                id: r.id,
+                message: r.description,
+                created_time: r.created_time,
+                full_picture: r.picture
+              }));
+              rawFbPosts = [...rawFbPosts, ...mappedReels];
+              
+              const oldestReel = pageFbReels[pageFbReels.length - 1];
+              const oldestReelDate = oldestReel.created_time ? new Date(oldestReel.created_time) : null;
+              if (oldestReelDate && oldestReelDate < SYNC_START_DATE) {
+                break;
+              }
+            }
+            fbReelsNextUrl = fbReelsData.paging?.next || "";
+          } else {
+            break;
           }
         }
 
@@ -137,21 +179,33 @@ export async function syncInstagramPosts() {
     // Process Instagram Posts
     for (const post of igPosts) {
       if (!existingIgIds.has(post.id)) {
-        // Find matching FB post based on caption
+        // Find matching FB post based on caption or publish time
+        let matchedFbPost = undefined;
         let matchedFbPostId = undefined;
         let postedOn = 'instagram';
         const shortcode = post.permalink ? post.permalink.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/)?.[1] : undefined;
         
-        if (post.caption && fbPosts.length > 0) {
-          const igCaptionNormalized = post.caption.trim().toLowerCase();
-          const match = fbPosts.find((fbp: any) => {
-            if (!fbp.message) return false;
-            const fbMessageNormalized = fbp.message.trim().toLowerCase();
-            return fbMessageNormalized === igCaptionNormalized || fbMessageNormalized.includes(igCaptionNormalized) || igCaptionNormalized.includes(fbMessageNormalized);
-          });
+        if (fbPosts.length > 0) {
+          if (post.caption) {
+            const igCaptionNormalized = post.caption.trim().toLowerCase();
+            matchedFbPost = fbPosts.find((fbp: any) => {
+              if (!fbp.message) return false;
+              const fbMessageNormalized = fbp.message.trim().toLowerCase();
+              return fbMessageNormalized === igCaptionNormalized || fbMessageNormalized.includes(igCaptionNormalized) || igCaptionNormalized.includes(fbMessageNormalized);
+            });
+          }
           
-          if (match) {
-            matchedFbPostId = match.id;
+          // Fallback: match by publish time within 10 minutes
+          if (!matchedFbPost) {
+            const igTime = post.timestamp ? new Date(post.timestamp).getTime() : 0;
+            matchedFbPost = fbPosts.find((fbp: any) => {
+              const fbTime = fbp.created_time ? new Date(fbp.created_time).getTime() : 0;
+              return Math.abs(igTime - fbTime) <= 10 * 60 * 1000;
+            });
+          }
+
+          if (matchedFbPost) {
+            matchedFbPostId = matchedFbPost.id;
             postedOn = 'both';
           }
         }
@@ -162,12 +216,14 @@ export async function syncInstagramPosts() {
           await writeClient.patch(existingFbDoc._id).set({
             reelId: post.id,
             shortcode,
-            postedOn: 'both'
+            postedOn: 'both',
+            // Backfill description if currently empty
+            ...(!existingFbDoc.description && matchedFbPost?.message ? { description: matchedFbPost.message } : {})
           }).commit();
           
           existingIgIds.set(post.id, { _id: existingFbDoc._id, reelId: post.id, fbPostId: matchedFbPostId, shortcode, postedOn: 'both' });
         } else {
-          const extracted = extractProductInfo(post.caption || "");
+          const extracted = extractProductInfo(post.caption || (matchedFbPost ? (matchedFbPost.message || '') : '') || "");
           
           await writeClient.create({
             _type: 'productReel',
@@ -175,8 +231,8 @@ export async function syncInstagramPosts() {
             reelId: post.id,
             fbPostId: matchedFbPostId,
             shortcode,
-            name: 'Post ' + post.id.substring(0, 5),
-            description: post.caption || '',
+            name: `${postedOn === 'both' ? 'Social' : 'Instagram'} Post - ${new Date(post.timestamp || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`,
+            description: post.caption || (matchedFbPost ? (matchedFbPost.message || '') : '') || '',
             makingChargeType: 'percentage', // default
             makingCharges: 0,
             thumbnailUrl: post.thumbnail_url || post.media_url || '',
@@ -235,33 +291,47 @@ export async function syncInstagramPosts() {
            existing.shortcode = shortcode;
         }
 
-        if (!existing.fbPostId && post.caption && fbPosts.length > 0) {
-          const igCaptionNormalized = post.caption.trim().toLowerCase();
-          const match = fbPosts.find((fbp: any) => {
-            if (!fbp.message) return false;
-            const fbMessageNormalized = fbp.message.trim().toLowerCase();
-            return fbMessageNormalized === igCaptionNormalized || fbMessageNormalized.includes(igCaptionNormalized) || igCaptionNormalized.includes(fbMessageNormalized);
-          });
+        if (!existing.fbPostId && fbPosts.length > 0) {
+          let matchedFbPost = undefined;
+
+          if (post.caption) {
+            const igCaptionNormalized = post.caption.trim().toLowerCase();
+            matchedFbPost = fbPosts.find((fbp: any) => {
+              if (!fbp.message) return false;
+              const fbMessageNormalized = fbp.message.trim().toLowerCase();
+              return fbMessageNormalized === igCaptionNormalized || fbMessageNormalized.includes(igCaptionNormalized) || igCaptionNormalized.includes(fbMessageNormalized);
+            });
+          }
           
-          if (match) {
-            if (!existingFbIds.has(match.id)) {
+          if (!matchedFbPost) {
+            const igTime = post.timestamp ? new Date(post.timestamp).getTime() : 0;
+            matchedFbPost = fbPosts.find((fbp: any) => {
+              const fbTime = fbp.created_time ? new Date(fbp.created_time).getTime() : 0;
+              return Math.abs(igTime - fbTime) <= 10 * 60 * 1000;
+            });
+          }
+          
+          if (matchedFbPost) {
+            if (!existingFbIds.has(matchedFbPost.id)) {
               await writeClient.patch(existing._id).set({
-                fbPostId: match.id,
-                postedOn: 'both'
+                fbPostId: matchedFbPost.id,
+                postedOn: 'both',
+                ...(!existing.description && matchedFbPost.message ? { description: matchedFbPost.message } : {})
               }).commit();
-              existingFbIds.set(match.id, { _id: existing._id, reelId: post.id, fbPostId: match.id, postedOn: 'both' });
+              existingFbIds.set(matchedFbPost.id, { _id: existing._id, reelId: post.id, fbPostId: matchedFbPost.id, postedOn: 'both' });
               const fullUpdatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id: existing._id });
               await sendPendingReplies(fullUpdatedProduct);
             } else {
               // Both IG and FB exist separately! Merge them by attaching FB id to IG doc, and deleting FB doc.
-              const fbDoc: any = existingFbIds.get(match.id);
+              const fbDoc: any = existingFbIds.get(matchedFbPost.id);
               if (fbDoc._id !== existing._id) {
                 await writeClient.patch(existing._id).set({
-                  fbPostId: match.id,
-                  postedOn: 'both'
+                  fbPostId: matchedFbPost.id,
+                  postedOn: 'both',
+                  ...(!existing.description && matchedFbPost.message ? { description: matchedFbPost.message } : {})
                 }).commit();
                 await writeClient.delete(fbDoc._id); // delete standalone FB doc
-                existingFbIds.set(match.id, { _id: existing._id, reelId: post.id, fbPostId: match.id, postedOn: 'both' });
+                existingFbIds.set(matchedFbPost.id, { _id: existing._id, reelId: post.id, fbPostId: matchedFbPost.id, postedOn: 'both' });
                 const fullUpdatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id: existing._id });
                 await sendPendingReplies(fullUpdatedProduct);
               }
@@ -330,7 +400,7 @@ export async function syncInstagramPosts() {
             _type: 'productReel',
             postedOn: 'facebook',
             fbPostId: fbPost.id,
-            name: 'FB Post ' + fbPost.id.substring(0, 5),
+            name: `Facebook Post - ${new Date(fbPost.created_time || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`,
             description: fbPost.message || '',
             makingChargeType: 'percentage',
             makingCharges: 0,

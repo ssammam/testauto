@@ -18,6 +18,15 @@ const FacebookIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const getProperPostName = (post: any) => {
+  if (!post.name || /^Post \w+$/.test(post.name) || /^FB Post \w+$/.test(post.name)) {
+    const platform = post.postedOn === 'instagram' ? 'Instagram' : post.postedOn === 'facebook' ? 'Facebook' : 'Social';
+    const dateStr = post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    return `${platform} Post${dateStr ? ` - ${dateStr}` : ''}`;
+  }
+  return post.name;
+};
+
 export default function PostManagerClient({ initialPosts, leads }: { initialPosts: any[], leads?: any[] }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
@@ -27,6 +36,7 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'pending'>('date-desc');
+  const [selectedOldMonth, setSelectedOldMonth] = useState('2026-04-01');
   
   // For Live DM Preview
   const [previewPost, setPreviewPost] = useState<any>(null);
@@ -125,10 +135,10 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
     document.body.removeChild(link);
   };
 
-  const handleSync = async () => {
+  const handleSync = async (customStartDate?: string) => {
     setIsSyncing(true);
     setSyncMessage('');
-    const res = await syncInstagramPosts();
+    const res = await syncInstagramPosts(customStartDate);
     if (res.success) {
       setSyncMessage(`Synced successfully. Added ${res.addedCount} new posts.`);
     } else {
@@ -201,13 +211,42 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
             Download Waiting List
           </button>
           <button 
-            onClick={handleSync}
+            onClick={() => handleSync()}
             disabled={isSyncing}
             className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors disabled:opacity-50 shadow-sm"
           >
             <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? 'Syncing...' : 'Sync Recent Posts'}
           </button>
+
+          <div className="flex items-center gap-1.5">
+            <select
+              value={selectedOldMonth}
+              onChange={(e) => setSelectedOldMonth(e.target.value)}
+              className="py-2 px-3 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#d62976]/20 focus:border-[#d62976] cursor-pointer"
+            >
+              <option value="2026-04-01">From April 2026</option>
+              <option value="2026-03-01">From March 2026</option>
+              <option value="2026-02-01">From Feb 2026</option>
+              <option value="2026-01-01">From Jan 2026</option>
+              <option value="2025-12-01">From Dec 2025</option>
+              <option value="2025-11-01">From Nov 2025</option>
+              <option value="2025-10-01">From Oct 2025</option>
+              <option value="2025-09-01">From Sep 2025</option>
+              <option value="2025-08-01">From Aug 2025</option>
+              <option value="2025-07-01">From Jul 2025</option>
+              <option value="2025-06-01">From Jun 2025</option>
+              <option value="2025-05-01">From May 2025</option>
+            </select>
+            <button 
+              onClick={() => handleSync(selectedOldMonth)}
+              disabled={isSyncing}
+              className="bg-[#7c6a46] text-white border border-[#7c6a46] px-4 py-2 rounded-xl font-medium flex items-center gap-2 hover:bg-[#6b5b3c] transition-colors disabled:opacity-50 shadow-sm whitespace-nowrap"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              Sync Old Posts
+            </button>
+          </div>
         </div>
       </div>
 
@@ -264,11 +303,17 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
               
               <div className="p-4 border-b border-gray-100 bg-white flex-1">
                 <div className="flex justify-between items-start mb-1">
-                  <h3 className="font-semibold text-gray-900 truncate" title={post.name}>{post.name}</h3>
+                  <h3 className="font-semibold text-gray-900 truncate" title={getProperPostName(post)}>{getProperPostName(post)}</h3>
                   {post.category && <span className="text-[10px] font-medium bg-[#f0ece1] text-[#7c6a46] px-2 py-0.5 rounded-full uppercase tracking-wider">{post.category}</span>}
                 </div>
+                {post.publishedAt && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1 mb-2">
+                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                    <span>{new Date(post.publishedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center mt-1">
-                  <p className="text-xs text-gray-400 font-mono">ID: {post.reelId}</p>
+                  <p className="text-xs text-gray-400 font-mono">ID: {post.reelId || post.fbPostId}</p>
                   {post.sku && <p className="text-xs font-mono bg-gray-100 px-1.5 rounded text-gray-600">SKU: {post.sku}</p>}
                 </div>
                 <p className="text-sm text-gray-600 mt-3 line-clamp-2" title={post.description}>
@@ -281,7 +326,7 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Product Name</label>
-                      <input name="name" defaultValue={post.name} required className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
+                      <input name="name" defaultValue={getProperPostName(post)} required className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]" />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">SKU</label>
@@ -479,7 +524,7 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
               <h3 className="text-gray-900 font-medium">No posts found</h3>
               <p className="text-gray-500 text-sm mt-1 mb-4">Sync your Instagram account to fetch recent posts.</p>
               <button 
-                onClick={handleSync}
+                onClick={() => handleSync()}
                 disabled={isSyncing}
                 className="bg-[#2A2A2A] text-white px-5 py-2.5 rounded-xl font-medium inline-flex items-center gap-2 hover:bg-black transition-colors disabled:opacity-50 shadow-sm"
               >
