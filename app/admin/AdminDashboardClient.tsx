@@ -384,8 +384,8 @@ export default function AdminDashboardClient({ initialRates, templates = [] }: {
           <div className="space-y-5 flex-1">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Select Purity</label>
-              <div className="grid grid-cols-4 gap-2">
-                {(['18k', '22k', '24k', 'silver'] as const).map(p => (
+              <div className="grid grid-cols-5 gap-2">
+                {(['9k', '18k', '22k', '24k', 'silver'] as const).map(p => (
                   <button
                     key={p}
                     onClick={() => setSelectedPurity(p)}

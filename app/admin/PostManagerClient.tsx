@@ -370,6 +370,7 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Material</label>
                       <select name="materialType" defaultValue={post.materialType} className="w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg py-2 px-3 focus:ring-[#7c6a46] focus:border-[#7c6a46]">
+                        <option value="gold9k">9K Gold</option>
                         <option value="gold18k">18K Gold</option>
                         <option value="gold22k">22K Gold</option>
                         <option value="gold24k">24K Gold</option>
@@ -457,6 +458,7 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
                     <div className="bg-gray-50 p-2 rounded-lg">
                       <span className="block text-xs text-gray-500">Material</span>
                       <span className="font-medium text-gray-900">{
+                        post.materialType === 'gold9k' ? '9K Gold' : 
                         post.materialType === 'gold18k' ? '18K Gold' : 
                         post.materialType === 'gold22k' ? '22K Gold' : 
                         post.materialType === 'gold24k' ? '24K Gold' : 'Silver'
