@@ -146,6 +146,29 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
 
     const isMissingRate = !product.isPriceLocked && ratePerGram === 0;
 
+    let rateText = "";
+    let rateVal = "available upon request";
+
+    if (product.materialType === 'gold9k') {
+      rateText = "1 gram 9kt Gold";
+      if (rates?.goldRate9k) rateVal = `₹${rates.goldRate9k.toLocaleString('en-IN')}`;
+    } else if (product.materialType === 'gold18k') {
+      rateText = "1 gram 18kt Gold";
+      if (rates?.goldRate18k) rateVal = `₹${rates.goldRate18k.toLocaleString('en-IN')}`;
+    } else if (product.materialType === 'gold22k') {
+      rateText = "1 gram 22kt Gold";
+      if (rates?.goldRate22k) rateVal = `₹${rates.goldRate22k.toLocaleString('en-IN')}`;
+    } else if (product.materialType === 'gold24k') {
+      rateText = "1 gram 24kt Gold";
+      if (rates?.goldRate24k) rateVal = `₹${rates.goldRate24k.toLocaleString('en-IN')}`;
+    } else if (product.materialType === 'silver') {
+      rateText = "1 kg Silver";
+      if (rates?.silverRate) rateVal = `₹${rates.silverRate.toLocaleString('en-IN')}`;
+    } else {
+      rateText = "1 gram 22kt Gold";
+      if (rates?.goldRate22k) rateVal = `₹${rates.goldRate22k.toLocaleString('en-IN')}`;
+    }
+
     if (isUnpricedNormal || isUnpricedLocked || isUnpricedRange || isDraft || isMissingRate) {
       const d = new Date();
       const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
@@ -173,11 +196,6 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
       const d = new Date();
       const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
       const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
-      const isSilver = product.materialType === 'silver';
-      const rateText = isSilver ? "1 kg Silver" : "1 gram 22kt Gold";
-      const rateVal = isSilver
-        ? (rates?.silverRate ? `₹${rates.silverRate.toLocaleString('en-IN')}` : 'available upon request')
-        : (rates?.goldRate22k ? `₹${rates.goldRate22k.toLocaleString('en-IN')}` : 'available upon request');
 
       const footerText = `✅ BIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that product. We are RH Jewellers Kengeri.\n\n⚠️ Disclaimer:\nFinal price is based on the billing date's gold rate & ornament weight.`;
 
@@ -219,10 +237,6 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
     const dateSuffix = (d.getDate() % 10 === 1 && d.getDate() !== 11) ? 'st' : (d.getDate() % 10 === 2 && d.getDate() !== 12) ? 'nd' : (d.getDate() % 10 === 3 && d.getDate() !== 13) ? 'rd' : 'th';
     const dateStr = `${d.getDate()}${dateSuffix} ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
     const isSilver = product.materialType === 'silver';
-    const rateText = isSilver ? "1 kg Silver" : "1 gram 22kt Gold";
-    const rateVal = isSilver
-      ? (rates?.silverRate ? `₹${rates.silverRate.toLocaleString('en-IN')}` : 'available upon request')
-      : (rates?.goldRate22k ? `₹${rates.goldRate22k.toLocaleString('en-IN')}` : 'available upon request');
 
     const isDefaultName = /^((FB )?Post \d+)$/i.test(product.name?.trim() || '');
     const catLabel = product.category ? product.category.charAt(0).toUpperCase() + product.category.slice(1) : 'Jewellery';
@@ -230,7 +244,12 @@ export function buildProductDmMessage(product: any, rates: any, name: string = "
 
     const footerText = `✅ BIS Hallmarked & Certified\n\nContact: 9620741404\n\nPlease let us know what you're looking for, and we'll help you with detailed information about that product. We are RH Jewellers Kengeri.\n\n⚠️ Disclaimer:\nFinal price is based on the billing date's gold rate & ornament weight.`;
 
-    return `Namaste, ${name},\n\nThank you for your interest in our ${catLabel} collection!\n\nMaking Charges: ${product.makingCharges || 0}%\nWastage: ${product.wastage !== undefined ? product.wastage : 10}%\n\nThe price of ${rateText} is ${rateVal} as on ${dateStr}.\n\n${titleLine}\n${isSilver ? 'Silver' : 'Hallmarked Gold'}\nWeight: ${product.weightGrams}g\nTotal Price: ₹${totalPrice.toLocaleString('en-IN')}\n${product.isPriceLocked ? '*(Incl. GST)*\n\n' : '\n'}${footerText}`;
+    const materialLabel = product.materialType === 'gold9k' ? '9kt Gold' :
+                          product.materialType === 'gold18k' ? '18kt Gold' :
+                          product.materialType === 'gold22k' ? '22kt Gold' :
+                          product.materialType === 'gold24k' ? '24kt Gold' : 'Silver';
+
+    return `Namaste, ${name},\n\nThank you for your interest in our ${catLabel} collection!\n\nMaking Charges: ${product.makingCharges || 0}%\nWastage: ${product.wastage !== undefined ? product.wastage : 10}%\n\nThe price of ${rateText} is ${rateVal} as on ${dateStr}.\n\n${titleLine}\n${isSilver ? 'Silver' : `Hallmarked ${materialLabel}`}\nWeight: ${product.weightGrams}g\nTotal Price: ₹${totalPrice.toLocaleString('en-IN')}\n${product.isPriceLocked ? '*(Incl. GST)*\n\n' : '\n'}${footerText}`;
   }
 
   return `Namaste, ${name}! To give you the exact price, could you please share the reel, reply directly to the story, or comment on the post of the specific jewelry piece you're interested in? We are RH Jewellers Kengeri.\n\nOur team will check the details and get back to you with the exact live price!\n\n*(Note: Please avoid sending screenshots for price checks. Images are only used if you want to place a custom jewelry order.)*`;
