@@ -256,44 +256,48 @@ export async function syncInstagramPosts(customStartDate?: string) {
           }
         }
       } else {
-        // Post exists, try to backfill fbPostId if missing
+        // Post exists, try to backfill/merge if necessary
         const existing: any = existingIgIds.get(post.id);
         const shortcode = post.permalink ? post.permalink.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/)?.[1] : undefined;
         
-        if (existing.status === 'draft' && post.caption && existing.description !== post.caption) {
+        let needsPatch = false;
+        const patchData: any = {};
+
+        // 1. Check description / caption (override if empty or if draft caption changed)
+        const existingHasNoCaption = !existing.description || existing.description.trim() === '';
+        const isDraftWithChangedCaption = existing.status === 'draft' && post.caption && existing.description !== post.caption;
+
+        if (post.caption && (existingHasNoCaption || isDraftWithChangedCaption)) {
            const extracted = extractProductInfo(post.caption);
            const hasNormalWeight = extracted.priceCalculationType === 'normal' && extracted.weightGrams > 0;
            const hasRangeWeight = extracted.priceCalculationType === 'range' && extracted.minWeightGrams > 0 && extracted.maxWeightGrams > 0;
            
+           patchData.description = post.caption;
+           patchData.materialType = extracted.materialType || existing.materialType || 'gold22k';
+           patchData.category = extracted.category || existing.category || 'rings';
+           patchData.weightGrams = extracted.weightGrams || 0;
+           patchData.minWeightGrams = extracted.minWeightGrams;
+           patchData.maxWeightGrams = extracted.maxWeightGrams;
+           patchData.priceCalculationType = extracted.priceCalculationType || 'normal';
+           patchData.notes = extracted.notes || '';
+           
            if (hasNormalWeight || hasRangeWeight) {
-             const updatedDoc = await writeClient.patch(existing._id).set({
-               description: post.caption,
-               status: 'active',
-               materialType: extracted.materialType || existing.materialType,
-               category: extracted.category || existing.category,
-               weightGrams: extracted.weightGrams || 0,
-               minWeightGrams: extracted.minWeightGrams,
-               maxWeightGrams: extracted.maxWeightGrams,
-               priceCalculationType: extracted.priceCalculationType,
-               notes: ''
-             }).commit();
-             const fullUpdatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id: existing._id });
-             await sendPendingReplies(fullUpdatedProduct);
-             addedCount++;
-           } else {
-             await writeClient.patch(existing._id).set({ description: post.caption }).commit();
-             existing.description = post.caption;
+             patchData.status = 'active';
            }
+           needsPatch = true;
         }
 
+        // 2. Check shortcode
         if (!existing.shortcode && shortcode) {
-           await writeClient.patch(existing._id).set({ shortcode }).commit();
-           existing.shortcode = shortcode;
+           patchData.shortcode = shortcode;
+           needsPatch = true;
         }
+
+        // 3. Check fbPostId backfill & merge
+        let matchedFbPost = undefined;
+        let shouldDeleteFbDocId = null;
 
         if (!existing.fbPostId && fbPosts.length > 0) {
-          let matchedFbPost = undefined;
-
           if (post.caption) {
             const igCaptionNormalized = post.caption.trim().toLowerCase();
             matchedFbPost = fbPosts.find((fbp: any) => {
@@ -312,31 +316,59 @@ export async function syncInstagramPosts(customStartDate?: string) {
           }
           
           if (matchedFbPost) {
-            if (!existingFbIds.has(matchedFbPost.id)) {
-              await writeClient.patch(existing._id).set({
-                fbPostId: matchedFbPost.id,
-                postedOn: 'both',
-                ...(!existing.description && matchedFbPost.message ? { description: matchedFbPost.message } : {})
-              }).commit();
-              existingFbIds.set(matchedFbPost.id, { _id: existing._id, reelId: post.id, fbPostId: matchedFbPost.id, postedOn: 'both' });
-              const fullUpdatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id: existing._id });
-              await sendPendingReplies(fullUpdatedProduct);
-            } else {
-              // Both IG and FB exist separately! Merge them by attaching FB id to IG doc, and deleting FB doc.
+            patchData.fbPostId = matchedFbPost.id;
+            patchData.postedOn = 'both';
+            needsPatch = true;
+
+            // If the matched FB post also has a message/caption, and we don't have a caption in patchData/existing, backfill it
+            const currentDesc = patchData.description || existing.description;
+            if ((!currentDesc || currentDesc.trim() === '') && matchedFbPost.message) {
+              const extracted = extractProductInfo(matchedFbPost.message);
+              const hasNormalWeight = extracted.priceCalculationType === 'normal' && extracted.weightGrams > 0;
+              const hasRangeWeight = extracted.priceCalculationType === 'range' && extracted.minWeightGrams > 0 && extracted.maxWeightGrams > 0;
+              
+              patchData.description = matchedFbPost.message;
+              patchData.materialType = extracted.materialType || existing.materialType || 'gold22k';
+              patchData.category = extracted.category || existing.category || 'rings';
+              patchData.weightGrams = extracted.weightGrams || 0;
+              patchData.minWeightGrams = extracted.minWeightGrams;
+              patchData.maxWeightGrams = extracted.maxWeightGrams;
+              patchData.priceCalculationType = extracted.priceCalculationType || 'normal';
+              patchData.notes = extracted.notes || '';
+              if (hasNormalWeight || hasRangeWeight) {
+                patchData.status = 'active';
+              }
+            }
+
+            // Check if there is an existing standalone FB document for this matched FB post to delete
+            if (existingFbIds.has(matchedFbPost.id)) {
               const fbDoc: any = existingFbIds.get(matchedFbPost.id);
               if (fbDoc._id !== existing._id) {
-                await writeClient.patch(existing._id).set({
-                  fbPostId: matchedFbPost.id,
-                  postedOn: 'both',
-                  ...(!existing.description && matchedFbPost.message ? { description: matchedFbPost.message } : {})
-                }).commit();
-                await writeClient.delete(fbDoc._id); // delete standalone FB doc
-                existingFbIds.set(matchedFbPost.id, { _id: existing._id, reelId: post.id, fbPostId: matchedFbPost.id, postedOn: 'both' });
-                const fullUpdatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id: existing._id });
-                await sendPendingReplies(fullUpdatedProduct);
+                shouldDeleteFbDocId = fbDoc._id;
               }
             }
           }
+        }
+
+        // Apply mutations if changes are needed, otherwise skip to save time
+        if (needsPatch) {
+          await writeClient.patch(existing._id).set(patchData).commit();
+          
+          // Update local memory maps
+          Object.assign(existing, patchData);
+          if (patchData.fbPostId) {
+            existingFbIds.set(patchData.fbPostId, { _id: existing._id, reelId: post.id, fbPostId: patchData.fbPostId, postedOn: 'both' });
+          }
+
+          // If status became active, trigger pending reply notifications
+          if (patchData.status === 'active') {
+            const fullUpdatedProduct = await writeClient.fetch(`*[_id == $id][0]`, { id: existing._id });
+            await sendPendingReplies(fullUpdatedProduct);
+          }
+        }
+
+        if (shouldDeleteFbDocId) {
+          await writeClient.delete(shouldDeleteFbDocId);
         }
       }
     }

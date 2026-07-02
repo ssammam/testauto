@@ -36,7 +36,7 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'pending'>('date-desc');
-  const [selectedOldMonth, setSelectedOldMonth] = useState('2026-04-01');
+  const [selectedOldMonth, setSelectedOldMonth] = useState('2026-05-01');
   
   // For Live DM Preview
   const [previewPost, setPreviewPost] = useState<any>(null);
@@ -219,12 +219,13 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
             {isSyncing ? 'Syncing...' : 'Sync Recent Posts'}
           </button>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center bg-[#fcecf3]/40 border border-[#d62976]/20 rounded-xl p-1 shadow-sm gap-1">
             <select
               value={selectedOldMonth}
               onChange={(e) => setSelectedOldMonth(e.target.value)}
-              className="py-2 px-3 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#d62976]/20 focus:border-[#d62976] cursor-pointer"
+              className="bg-transparent text-sm text-[#d62976] font-semibold focus:outline-none cursor-pointer py-1 px-2.5 border-0 focus:ring-0"
             >
+              <option value="2026-05-01">From May 2026</option>
               <option value="2026-04-01">From April 2026</option>
               <option value="2026-03-01">From March 2026</option>
               <option value="2026-02-01">From Feb 2026</option>
@@ -241,9 +242,9 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
             <button 
               onClick={() => handleSync(selectedOldMonth)}
               disabled={isSyncing}
-              className="bg-[#7c6a46] text-white border border-[#7c6a46] px-4 py-2 rounded-xl font-medium flex items-center gap-2 hover:bg-[#6b5b3c] transition-colors disabled:opacity-50 shadow-sm whitespace-nowrap"
+              className="bg-gradient-to-r from-[#d62976] to-[#f77737] hover:opacity-90 active:scale-[0.98] text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50 shadow-sm whitespace-nowrap"
             >
-              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
               Sync Old Posts
             </button>
           </div>
