@@ -71,10 +71,16 @@ export async function syncInstagramPosts() {
     const allIgPosts = data.data || [];
     const SYNC_START_DATE = new Date('2026-05-01T00:00:00Z');
     
-    const igPosts = allIgPosts.filter((post: any) => {
-      const postDate = post.timestamp ? new Date(post.timestamp) : null;
-      return postDate && postDate >= SYNC_START_DATE;
-    });
+    const igPosts = allIgPosts
+      .filter((post: any) => {
+        const postDate = post.timestamp ? new Date(post.timestamp) : null;
+        return postDate && postDate >= SYNC_START_DATE;
+      })
+      .sort((a: any, b: any) => {
+        const dateA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const dateB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return dateA - dateB;
+      });
 
     // --- NEW: Fetch Facebook Posts to detect cross-posting ---
     let fbPosts: any[] = [];
@@ -105,10 +111,16 @@ export async function syncInstagramPosts() {
           }
         }
 
-        fbPosts = rawFbPosts.filter((post: any) => {
-          const postDate = post.created_time ? new Date(post.created_time) : null;
-          return postDate && postDate >= SYNC_START_DATE;
-        });
+        fbPosts = rawFbPosts
+          .filter((post: any) => {
+            const postDate = post.created_time ? new Date(post.created_time) : null;
+            return postDate && postDate >= SYNC_START_DATE;
+          })
+          .sort((a: any, b: any) => {
+            const dateA = a.created_time ? new Date(a.created_time).getTime() : 0;
+            const dateB = b.created_time ? new Date(b.created_time).getTime() : 0;
+            return dateA - dateB;
+          });
       }
     } catch (e) {
       console.error("Error fetching FB posts for cross-post matching:", e);

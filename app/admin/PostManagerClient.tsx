@@ -26,6 +26,7 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
   const [localCalcType, setLocalCalcType] = useState('normal');
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'pending'>('date-desc');
   
   // For Live DM Preview
   const [previewPost, setPreviewPost] = useState<any>(null);
@@ -43,7 +44,24 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
     return { ...post, pendingCount };
   });
 
-  const sortedPosts = [...postsWithPendingCount].sort((a, b) => b.pendingCount - a.pendingCount);
+  const sortedPosts = [...postsWithPendingCount].sort((a, b) => {
+    if (sortBy === 'pending') {
+      if (b.pendingCount !== a.pendingCount) {
+        return b.pendingCount - a.pendingCount;
+      }
+      const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return dateB - dateA;
+    } else if (sortBy === 'date-asc') {
+      const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return dateA - dateB;
+    } else { // 'date-desc'
+      const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return dateB - dateA;
+    }
+  });
 
   const filteredPosts = sortedPosts.filter(post => 
     post.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -159,6 +177,18 @@ export default function PostManagerClient({ initialPosts, leads }: { initialPost
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#d62976]/20 focus:border-[#d62976] w-full sm:w-64"
             />
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="py-2 px-3 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#d62976]/20 focus:border-[#d62976] cursor-pointer w-full sm:w-auto"
+            >
+              <option value="date-desc">Newest First</option>
+              <option value="date-asc">Oldest First</option>
+              <option value="pending">Pending Inquiries</option>
+            </select>
           </div>
           {syncMessage && (
             <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-md">{syncMessage}</span>

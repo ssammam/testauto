@@ -11,7 +11,7 @@ export const revalidate = 0; // Disable caching for the admin page to always get
 
 export default async function AdminPage() {
   const latestRates = await client.fetch(`*[_type == "dailyPrice"] | order(_createdAt desc)[0]`);
-  const productReels = await client.fetch(`*[_type == "productReel"] | order(_createdAt desc)`);
+  const productReels = await client.fetch(`*[_type == "productReel"] | order(publishedAt desc, _createdAt desc)`);
   const leads = await client.fetch(`*[_type == "lead"] | order(_createdAt desc)`);
   const rateCardTemplates = await client.fetch(`*[_type == "rateCardTemplate"]{
     _id,
